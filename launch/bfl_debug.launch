@@ -1,0 +1,3 @@
+<launch>
+<node launch-prefix="terminator -x gdb" name="bfl_test" output="screen" pkg="chairbot_selfdrive" type="pf_localization_node"/>
+</launch>

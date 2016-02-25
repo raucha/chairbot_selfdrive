@@ -1,12 +1,21 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(chairbot_selfdrive)
 
+# bfl (Bayesian Filtering Library) is a third party package that uses pkg-config
+find_package(PkgConfig)
+pkg_check_modules(BFL REQUIRED orocos-bfl)
+# include_directories(${BFL_INCLUDE_DIRS}/bfl)
+message("BFL include dirs:" ${BFL_INCLUDE_DIRS})
+message("BFL library dirs:" ${BFL_LIBRARY_DIRS})
+include_directories(${BFL_INCLUDE_DIRS})
+link_directories(${BFL_LIBRARY_DIRS})
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  myahrs_driver
+  # myahrs_driver
   nav_msgs
   # novatel-span-driver
   robot_localization
@@ -16,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   # velodyne
+  # bfl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -122,8 +132,15 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
+
+add_executable(
+  pf_localization_node src/pf_localization_node.cpp src/nonlinearMeasurementPdf.cpp src/nonlinearSystemPdf.cpp src/customparticlefilter.cpp
+)
+add_dependencies(pf_localization_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(pf_localization_node ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(chairbot_selfdrive
