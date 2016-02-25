@@ -1,0 +1,8 @@
+<launch>
+  <node pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 base_link imu_link 100" name="tf_imulink"/>
+  <node pkg="tf" type="static_transform_publisher" args="0 0 0 -1.5707963267948966 0 0 imu_link velodyne  100" name="tf_velo"/>
+  <node pkg="tf" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint base_link 100" name="tf_baselink"/>
+  <node pkg="tf" type="tf_remap" args="_mappings:='[{old: base_footprint, new: base_footprint_useless},{old: imu_link, new: imu_link_useless}]'" name="tf_remap"/>
+  <!-- $ roslaunch chairbot_selfdrive ekf_relative.launch -->
+  <!-- $ roslaunch chairbot_selfdrive ekf_absolute.launch -->
+</launch>
