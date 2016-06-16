@@ -1,0 +1,48 @@
+# 記載の無い変数は自動で初期値が補完される
+nodes:
+  - #0
+    latitude: 33.35460
+    longitude: 130.13106
+  - #1
+    latitude: 33.35462
+    longitude: 130.13111
+  - #2
+    latitude: 33.35459
+    longitude: 130.13112
+  - #3
+    latitude: 33.35460
+    longitude: 130.13132
+  - #4
+    latitude: 33.35459
+    longitude: 130.13134
+  - #5
+    latitude: 33.35455
+    longitude: 130.13137
+  - #6
+    latitude: 33.35455
+    longitude: 130.13143
+  - #7
+    latitude: 33.35459
+    longitude: 130.13145
+  - #8
+    latitude: 33.35462
+    longitude: 130.13144
+edges:
+  - #0
+    node_ids: [1, 2]
+  - #1
+    node_ids: [0]
+  - #2
+    node_ids: [0, 3]
+  - #3
+    node_ids: [2, 4]
+  - #4
+    node_ids: [3, 5]
+  - #5
+    node_ids: [4, 6]
+  - #6
+    node_ids: [5, 7]
+  - #7
+    node_ids: [6, 8]
+  - #8
+    node_ids: [7]
