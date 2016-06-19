@@ -1,0 +1,5 @@
+<launch>
+    <include file="$(find turtlebot_gazebo)/launch/turtlebot_world.launch"/>
+    <include file="$(find turtlebot_gazebo)/launch/amcl_demo.launch"/>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find chairbot_selfdrive)/config/turtlebot_sim.rviz"/>
+</launch>
