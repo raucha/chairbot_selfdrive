@@ -1,0 +1,17 @@
+
+<launch>
+    <!-- トピック名を変えてLRFを起動 -->
+    <!-- <arg name="remap" default="/scan:=/human_tracker_inputs" />
+    <node pkg="urg_node" type="urg_node" name="urg_node" args="$(arg remap)"> -->
+    <node pkg="urg_node" type="urg_node" name="urg_node">
+      <param name="ip_address" type="str" value="192.168.0.10" />
+      <param name="frame_id" type="str" value="lrf1" />
+      <param name="publish_multiecho" type="bool" value="false" />
+      <param name="publish_intensity" type="bool" value="true" />
+    </node>
+
+    <!-- tfツリーの子にLRFを配置 -->
+    <arg name="lrf_frame_id" default="/lrf1" />
+    <node pkg="tf" type="static_transform_publisher" name="tf_lrf1"
+        args="0.68 -0.3 0.37 -1.5707963267948966 0 0 /base_footprint $(arg lrf_frame_id) 100" />
+</launch>
