@@ -1,0 +1,14 @@
+<launch>
+  <group ns="mimamorukun">
+    <!--矩形切り捨て-->
+    <node pkg="raucha_utils" type="laser_crop_rect" name="scan_crop1" output="screen">
+      <remap from="scan_in" to="/pot4/scan" />
+      <remap from="scan_out" to="scan1" />
+      <param name="xmin" value="-0.45" />
+      <param name="xmax" value="1.25" />
+      <param name="ymin" value="-0.7" />
+      <param name="ymax" value="0.7" />
+      <param name="frame_id" value="base_footprint" />
+    </node>
+  </group>
+</launch>
