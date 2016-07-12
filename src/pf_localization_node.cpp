@@ -183,8 +183,7 @@ int main(int argc, char** argv) {
   // ros::NodeHandle nh_private("~");
   pub_filtered = nh.advertise<nav_msgs::Odometry>("pf_filtered", 5);
   particle_pub = nh.advertise<geometry_msgs::PoseArray>("pf_particles", 5);
-  ros::Subscriber pf_predict_sub =
-      nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
+  ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
   ros::Subscriber pf_update_sub = nh.subscribe<nav_msgs::Odometry>("gps_odom", 10, pf_update);
   ros::spin();
 }

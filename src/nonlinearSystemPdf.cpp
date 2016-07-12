@@ -25,13 +25,13 @@ bool NonlinearSystemPdf::SampleFrom(Sample<ColumnVector>& one_sample, int method
   ColumnVector vel = ConditionalArgumentGet(1);
 
   // sample from additive noise
-  Sample<ColumnVector> noise;   //! [v, sigma]
+  Sample<ColumnVector> noise;  //! [v, sigma]
   _additiveNoise.SampleFrom(noise, method, args);
 
   // system update
-  state(1) += cos(state(3)) * (vel(1)+noise.ValueGet()(1));
-  state(2) += sin(state(3)) * (vel(1)+noise.ValueGet()(1));
-  state(3) += (vel(2)+noise.ValueGet()(2));
+  state(1) += cos(state(3)) * (vel(1) + noise.ValueGet()(1));
+  state(2) += sin(state(3)) * (vel(1) + noise.ValueGet()(1));
+  state(3) += (vel(2) + noise.ValueGet()(2));
   // std::cout << "cov: " << _additiveNoise.CovarianceGet() << std::endl;
   // std::cout << "predict: " << vel(1) << "  " << vel(2) << std::endl;
 
