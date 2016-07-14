@@ -155,6 +155,9 @@ ros::Publisher particle_pub;
 bool is_got_initial_pose = false;
 std_msgs::Header g_latest_header;
 
+/**
+ * @brief PFで推定した姿勢を発行
+ */
 void PublishPose() {
   if (!is_got_initial_pose) {
     return;
@@ -167,7 +170,8 @@ void PublishPose() {
   // pose_msg.header.stamp = ros::Time::now();
   pose_msg.header.stamp = g_latest_header.stamp;
   // pose_msg.header.frame_id = "odom";
-  pose_msg.header.frame_id = "base_scan4";
+  // pose_msg.header.frame_id = "base_scan4";
+  pose_msg.header.frame_id = "map";
 
   pose_msg.pose.pose.position.x = pose(1);
   pose_msg.pose.pose.position.y = pose(2);
@@ -215,7 +219,8 @@ void PublishParticles() {
   // particles_msg.header.stamp = ros::Time::now();
   particles_msg.header.stamp = g_latest_header.stamp;
   // particles_msg.header.frame_id = "odom";
-  particles_msg.header.frame_id = "base_scan4";
+  // particles_msg.header.frame_id = "base_scan4";
+  particles_msg.header.frame_id = "map";
 
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
   vector<WeightedSample<ColumnVector> > samples;
@@ -234,6 +239,10 @@ void PublishParticles() {
   particle_pub.publish(particles_msg);
 }
 
+/**
+ * @brief オドメトリでパーティクルの予測（移動）
+ * @param arg オドメトリ
+ */
 void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   if (!is_got_initial_pose) {
     return;
@@ -279,13 +288,19 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   PublishParticles();
 }
 
+/**
+ * @brief 観測座標を持ちいてPFの更新（重み付け）
+ * @param arg 車輪の座標
+ */
 void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
+  g_latest_header = arg->header;
+  
   if (!is_got_initial_pose) {
     //パーティクルの初期配置
     ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
     prior_Mu(1) = arg->point.x;
     prior_Mu(2) = arg->point.y;
-    prior_Mu(3) = 0.0;
+    prior_Mu(3) = 0.0;  //角度
     SymmetricMatrix prior_Cov(STATE_SIZE);
     // prior_Cov(1, 1) = pow(5.0, 2);
     prior_Cov(1, 1) = pow(1.0, 2);
@@ -303,18 +318,16 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
 
     // Discrete prior for Particle filter (using the continuous Gaussian prior)
     const int NUM_SAMPLES = 1000;
-    // const int NUM_SAMPLES = 2000;
     // 初期分布が離散化されたパーティクルを取得
     vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
     prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
     MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
     prior_discr.ListOfSamplesSet(prior_samples);
-    // CustomParticleFilter filter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
+    // パーティクルフィルタを生成
     g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
-    // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 2.0, MULTINOMIAL_RS);;
     is_got_initial_pose = true;
+    return;
   }
-  g_latest_header = arg->header;
   ColumnVector measurement(2);  // [x, y]
   measurement(1) = arg->point.x;
   measurement(2) = arg->point.y;
@@ -323,16 +336,14 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   //  * NonLinear Measurement model   *
   //  ********************************/
   ColumnVector mu(MEAS_SIZE);
-  mu(1) = 0.0;
-  mu(2) = 0.0;
+  mu(1) = 0.0;  // E[x]
+  mu(2) = 0.0;  // E[y]
   SymmetricMatrix cov(MEAS_SIZE);
   const double cov_min = 0.01;
-  cov(1, 1) = 1.0;
-  // cov(1, 1) = max(arg->pose.covariance[0], cov_min);
+  cov(1, 1) = 1.0;  // Var[x,x]
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
-  cov(2, 2) = 1.0;
-  // cov(2, 2) = max(arg->pose.covariance[7], cov_min);
+  cov(2, 2) = 1.0;  // Var[y,y]
   Gaussian gaus_noise(mu, cov);
   NonlinearMeasurementPdf meas_pdf(gaus_noise);
   g_meas_model->MeasurementPdfSet(&meas_pdf);
@@ -342,6 +353,9 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   PublishParticles();
 }
 
+/**
+ * @brief main
+ */
 int main(int argc, char** argv) {
   cout << "Hello World" << endl;
 
