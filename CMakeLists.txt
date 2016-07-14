@@ -27,8 +27,16 @@ find_package(catkin REQUIRED COMPONENTS
   # velodyne
   # bfl
   graph_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
+  laser_geometry
+  pcl_ros
+  pcl_conversions
 )
 
+# SET(CMAKE_CXX_FLAGS "-std=c++11 -g -O0 ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-std=c++11 -Og ${CMAKE_CXX_FLAGS}")
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -68,7 +76,7 @@ add_message_files(
   NavSatGraph.msg
 )
 
-## Generate services in the 'srv' folder
+## Generate services in the 'srv' folder,"/opt/ros/indigo/include"
 # add_service_files(
 #   FILES
 #   Service1.srv
@@ -142,6 +150,17 @@ add_executable(
 )
 add_dependencies(pf_localization_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(pf_localization_node ${catkin_LIBRARIES} ${BFL_LIBRARIES})
+
+add_executable(lrf_reflectance src/lrf_reflectance.cpp)
+target_link_libraries(lrf_reflectance ${catkin_LIBRARIES})
+
+add_executable(pot_pose_pf src/pot_pose_pf.cpp)
+add_dependencies(pot_pose_pf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(pot_pose_pf ${catkin_LIBRARIES} ${BFL_LIBRARIES})
+
+add_executable(pose2frame src/pose2frame.cpp)
+add_dependencies(pose2frame ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(pose2frame ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(chairbot_selfdrive
