@@ -24,13 +24,11 @@
 namespace BFL {
 using namespace MatrixWrapper;
 /// NonLinear Conditional Gaussian
-class NonlinearSystemPdf
-    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearSystemPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   // @param additiveNoise Pdf representing the additive Gaussian uncertainty
   NonlinearSystemPdf(const Gaussian& additiveNoise)
-      : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE,
-                                                   SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
+      : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE, SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
     _additiveNoise = additiveNoise;
   }
   virtual ~NonlinearSystemPdf(){};
@@ -93,13 +91,11 @@ class NonlinearSystemPdf
 namespace BFL {
 using namespace MatrixWrapper;
 /// Non Linear Conditional Gaussian
-class NonlinearMeasurementPdf
-    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearMeasurementPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   //  @param additiveNoise Pdf representing the additive Gaussian uncertainty
   NonlinearMeasurementPdf(const Gaussian& measNoise)
-      : ConditionalPdf<ColumnVector, ColumnVector>(MEASMODEL_DIMENSION_MOBILE,
-                                                   MEASMODEL_NUMCONDARGUMENTS_MOBILE) {
+      : ConditionalPdf<ColumnVector, ColumnVector>(MEASMODEL_DIMENSION_MOBILE, MEASMODEL_NUMCONDARGUMENTS_MOBILE) {
     _measNoise = measNoise;
   }
   virtual ~NonlinearMeasurementPdf() {}
@@ -127,18 +123,16 @@ class NonlinearMeasurementPdf
 ////////////////////////
 using namespace BFL;
 
-class CustomParticleFilter
-    : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class CustomParticleFilter : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
-  CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0,
-                       double resamplethreshold = 0, int resamplescheme = DEFAULT_RS);
+  CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0, double resamplethreshold = 0,
+                       int resamplescheme = DEFAULT_RS);
   vector<WeightedSample<MatrixWrapper::ColumnVector> > getNewSamples() { return _new_samples; }
 };
 
-CustomParticleFilter::CustomParticleFilter(MCPdf<ColumnVector>* prior, int resampleperiod,
-                                           double resamplethreshold, int resamplescheme)
-    : BootstrapFilter<ColumnVector, ColumnVector>(prior, resampleperiod, resamplethreshold,
-                                                  resamplescheme) {}
+CustomParticleFilter::CustomParticleFilter(MCPdf<ColumnVector>* prior, int resampleperiod, double resamplethreshold,
+                                           int resamplescheme)
+    : BootstrapFilter<ColumnVector, ColumnVector>(prior, resampleperiod, resamplethreshold, resamplescheme) {}
 
 /////////
 /////////
@@ -405,8 +399,7 @@ int main(int argc, char** argv) {
   pub_filtered = nh.advertise<nav_msgs::Odometry>("pf_filtered", 5);
   particle_pub = nh.advertise<geometry_msgs::PoseArray>("pf_particles", 5);
   ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
-  ros::Subscriber pf_update_sub =
-      nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
+  ros::Subscriber pf_update_sub = nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
   ros::spin();
   delete g_filter;
 }

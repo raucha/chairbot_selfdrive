@@ -25,8 +25,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   ROS_INFO("got scan data");
   sensor_msgs::LaserScan s_in = *scan;
   // 反射率の低い点を排除
-  for(int i=0;i<s_in.ranges.size();i++){
-    if(intensity_th > s_in.intensities.at(i)){
+  for (int i = 0; i < s_in.ranges.size(); i++) {
+    if (intensity_th > s_in.intensities.at(i)) {
       s_in.ranges.at(i) = s_in.range_max + 1.0;
     }
   }
@@ -39,7 +39,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   pub_pc.publish(cloud);
 
   pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-  pcl::fromROSMsg (cloud, pcl_cloud);
+  pcl::fromROSMsg(cloud, pcl_cloud);
 
   // // Create and accumulate points
   // CentroidPoint<pcl::PointXYZ> centroid;
@@ -51,7 +51,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   pcl::PointXYZ center;
   geometry_msgs::PoseWithCovarianceStamped pose;
 
-  for(auto iter=pcl_cloud.begin(); iter != pcl_cloud.end(); iter++){
+  for (auto iter = pcl_cloud.begin(); iter != pcl_cloud.end(); iter++) {
     pose.pose.pose.position.x += iter->x;
     pose.pose.pose.position.y += iter->y;
     pose.pose.pose.position.z += iter->z;
@@ -59,10 +59,10 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     // pose.pose.position.y += iter->y;
     // pose.pose.position.z += iter->z;
   }
-  if(0 != pcl_cloud.size()){
-    pose.pose.pose.position.x /= (float) pcl_cloud.size();
-    pose.pose.pose.position.y /= (float) pcl_cloud.size();
-    pose.pose.pose.position.z /= (float) pcl_cloud.size();
+  if (0 != pcl_cloud.size()) {
+    pose.pose.pose.position.x /= (float)pcl_cloud.size();
+    pose.pose.pose.position.y /= (float)pcl_cloud.size();
+    pose.pose.pose.position.z /= (float)pcl_cloud.size();
     // pose.pose.position.x /= (float) pcl_cloud.size();
     // pose.pose.position.y /= (float) pcl_cloud.size();
     // pose.pose.position.z /= (float) pcl_cloud.size();
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh_private("~");
 
   nh_private.param<int>("intensity_th", intensity_th, 1000);
-  ROS_INFO_STREAM("intensity_th:"<< intensity_th);
+  ROS_INFO_STREAM("intensity_th:" << intensity_th);
 
   ros::Subscriber scan_sub = nh.subscribe("scan_in", 10000, laserCallback);
 

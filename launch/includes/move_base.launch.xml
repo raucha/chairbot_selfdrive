@@ -1,6 +1,3 @@
-<!--
-    ROS navigation stack with velocity smoother and safety (reactive) controller
--->
 <launch>
   <!-- <include file="$(find chairbot_selfdrive)/launch/includes/velocity_smoother.launch.xml"/> -->
   <!-- <include file="$(find chairbot_selfdrive)/launch/includes/safety_controller.launch.xml"/> -->
