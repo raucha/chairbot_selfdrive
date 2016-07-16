@@ -27,11 +27,13 @@
 namespace BFL {
 using namespace MatrixWrapper;
 /// NonLinear Conditional Gaussian
-class NonlinearSystemPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearSystemPdf
+    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   // @param additiveNoise Pdf representing the additive Gaussian uncertainty
   NonlinearSystemPdf(const Gaussian& additiveNoise)
-      : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE, SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
+      : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE,
+                                                   SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
     _additiveNoise = additiveNoise;
   }
   virtual ~NonlinearSystemPdf(){};
@@ -94,11 +96,13 @@ class NonlinearSystemPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, Ma
 namespace BFL {
 using namespace MatrixWrapper;
 /// Non Linear Conditional Gaussian
-class NonlinearMeasurementPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearMeasurementPdf
+    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   //  @param additiveNoise Pdf representing the additive Gaussian uncertainty
   NonlinearMeasurementPdf(const Gaussian& measNoise)
-      : ConditionalPdf<ColumnVector, ColumnVector>(MEASMODEL_DIMENSION_MOBILE, MEASMODEL_NUMCONDARGUMENTS_MOBILE) {
+      : ConditionalPdf<ColumnVector, ColumnVector>(MEASMODEL_DIMENSION_MOBILE,
+                                                   MEASMODEL_NUMCONDARGUMENTS_MOBILE) {
     _measNoise = measNoise;
   }
   virtual ~NonlinearMeasurementPdf() {}
@@ -126,16 +130,18 @@ class NonlinearMeasurementPdf : public ConditionalPdf<MatrixWrapper::ColumnVecto
 ////////////////////////
 using namespace BFL;
 
-class CustomParticleFilter : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class CustomParticleFilter
+    : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
-  CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0, double resamplethreshold = 0,
-                       int resamplescheme = DEFAULT_RS);
+  CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0,
+                       double resamplethreshold = 0, int resamplescheme = DEFAULT_RS);
   vector<WeightedSample<MatrixWrapper::ColumnVector> > getNewSamples() { return _new_samples; }
 };
 
-CustomParticleFilter::CustomParticleFilter(MCPdf<ColumnVector>* prior, int resampleperiod, double resamplethreshold,
-                                           int resamplescheme)
-    : BootstrapFilter<ColumnVector, ColumnVector>(prior, resampleperiod, resamplethreshold, resamplescheme) {}
+CustomParticleFilter::CustomParticleFilter(MCPdf<ColumnVector>* prior, int resampleperiod,
+                                           double resamplethreshold, int resamplescheme)
+    : BootstrapFilter<ColumnVector, ColumnVector>(prior, resampleperiod, resamplethreshold,
+                                                  resamplescheme) {}
 
 /////////
 /////////
@@ -158,7 +164,7 @@ ros::Publisher particle_pub;
 bool is_got_initial_pose = false;
 std_msgs::Header g_latest_header;
 tf2_ros::Buffer tfBuffer_;
-tf2_ros::TransformListener *tfListener_;
+tf2_ros::TransformListener* tfListener_;
 
 /**
  * @brief PFで推定した姿勢を発行
@@ -286,7 +292,7 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   cov(1, 1) = pow(0.05 * max(input(1), cov_min), 2);
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
-  cov(2, 2) = pow(0.1 * max(fabs(input(1))/wheel_rad + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
+  cov(2, 2) = pow(0.1 * max(fabs(input(1)) / wheel_rad + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
   Gaussian gaus_noise(mu, cov);
   NonlinearSystemPdf sys_pdf(gaus_noise);
   g_sys_model->SystemPdfSet(&sys_pdf);
@@ -347,7 +353,8 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     prior_discr.ListOfSamplesSet(prior_samples);
     // パーティクルフィルタを生成
     // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
-    g_filter = new CustomParticleFilter(&prior_discr, 0.1, NUM_SAMPLES*9.0/10.0, MULTINOMIAL_RS);
+    g_filter =
+        new CustomParticleFilter(&prior_discr, 0.1, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
     is_got_initial_pose = true;
     return;
   }
@@ -442,7 +449,8 @@ int main(int argc, char** argv) {
   pub_filtered = nh.advertise<nav_msgs::Odometry>("pf_filtered", 5);
   particle_pub = nh.advertise<geometry_msgs::PoseArray>("pf_particles", 5);
   ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
-  ros::Subscriber pf_update_sub = nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
+  ros::Subscriber pf_update_sub =
+      nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
   ros::spin();
   delete g_filter;
 }

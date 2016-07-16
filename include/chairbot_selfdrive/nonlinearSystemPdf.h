@@ -6,7 +6,8 @@
 
 namespace BFL {
 /// NonLinear Conditional Gaussian
-class NonlinearSystemPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearSystemPdf
+    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   /// Constructor
   /** @param additiveNoise Pdf representing the additive Gaussian uncertainty

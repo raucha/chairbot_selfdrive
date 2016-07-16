@@ -8,7 +8,8 @@
 
 namespace BFL {
 /// Non Linear Conditional Gaussian
-class NonlinearMeasurementPdf : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
+class NonlinearMeasurementPdf
+    : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   /// Constructor
   /**

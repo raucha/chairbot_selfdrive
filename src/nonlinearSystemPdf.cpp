@@ -9,14 +9,16 @@ namespace BFL {
 using namespace MatrixWrapper;
 
 NonlinearSystemPdf::NonlinearSystemPdf(const Gaussian& additiveNoise)
-    : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE, SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
+    : ConditionalPdf<ColumnVector, ColumnVector>(SYSMODEL_DIMENSION_MOBILE,
+                                                 SYSMODEL_NUMCONDARGUMENTS_MOBILE) {
   _additiveNoise = additiveNoise;
 }
 
 NonlinearSystemPdf::~NonlinearSystemPdf() {}
 
 //! 要はノイズの乗った次状態予測値をone_sampleで返せればおｋ
-bool NonlinearSystemPdf::SampleFrom(Sample<ColumnVector>& one_sample, int method, void* args) const {
+bool NonlinearSystemPdf::SampleFrom(Sample<ColumnVector>& one_sample, int method,
+                                    void* args) const {
   //! [x, y, rad]
   ColumnVector state = ConditionalArgumentGet(0);
   //! [v, sigma]

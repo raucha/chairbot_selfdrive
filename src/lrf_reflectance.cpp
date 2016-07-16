@@ -42,24 +42,23 @@ int callbacked_num = 0;
 #define INITIALS_SIZE 5
 sensor_msgs::LaserScan initials[INITIALS_SIZE];
 
-
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   ROS_INFO("got scan data");
   //スキャンの初期値を記録
-  if(INITIALS_SIZE > callbacked_num){
+  if (INITIALS_SIZE > callbacked_num) {
     initials[callbacked_num] = *scan;
     callbacked_num++;
     return;
   }
   // 初期スキャンの平均値取得
   sensor_msgs::LaserScan initials_ave = *scan;
-  for(int lasers=0;lasers<scan->ranges.size();lasers++){
+  for (int lasers = 0; lasers < scan->ranges.size(); lasers++) {
     initials_ave.ranges.at(lasers) = 0.0;
     initials_ave.intensities.at(lasers) = 0.0;
-    int vailds=0;
-    for (int scans=0;scans<INITIALS_SIZE;scans++){
+    int vailds = 0;
+    for (int scans = 0; scans < INITIALS_SIZE; scans++) {
       // ROS_INFO_STREAM("lasers:"<<lasers<<"  scans:"<<scans);
-      if(!std::isfinite(initials[scans].ranges.at(lasers))){
+      if (!std::isfinite(initials[scans].ranges.at(lasers))) {
         continue;
       }
       vailds++;
@@ -68,13 +67,13 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     initials_ave.ranges.at(lasers) /= ((float)vailds);
   }
   sensor_msgs::LaserScan s_in = *scan;
-  for(int lasers=0;lasers<scan->ranges.size();lasers++){
+  for (int lasers = 0; lasers < scan->ranges.size(); lasers++) {
     const float cur = s_in.ranges.at(lasers);
     const float ini = initials_ave.ranges.at(lasers);
-    if(!std::isfinite(cur) || !std::isfinite(ini)){
+    if (!std::isfinite(cur) || !std::isfinite(ini)) {
       continue;
     }
-    if(0.2>std::fabs(cur-ini)){
+    if (0.2 > std::fabs(cur - ini)) {
       s_in.ranges.at(lasers) = s_in.range_max + 1.0;
     }
   }
@@ -93,37 +92,40 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   pub_pc.publish(cloud);
 
   // pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(cloud, *pcl_cloud);
 
   // 等間隔にするためにダウンサンプル
   pcl::VoxelGrid<pcl::PointXYZ> vg;
   // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_tmp2 (new pcl::PointCloud<pcl::PointXYZ>);  
-  vg.setInputCloud (pcl_cloud);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_tmp2(new pcl::PointCloud<pcl::PointXYZ>);
+  vg.setInputCloud(pcl_cloud);
+  vg.setLeafSize(0.01f, 0.01f, 0.01f);
   // vg.setLeafSize (1.0f, 1.0f, 1.0f);
-  vg.filter (*pc_tmp2);
+  vg.filter(*pc_tmp2);
   *pcl_cloud = *pc_tmp2;
 
   // Creating the KdTree object for the search method of the extraction
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud (pcl_cloud);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(pcl_cloud);
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance (0.05); // 5cm
-  ec.setMinClusterSize (5);
-  ec.setMaxClusterSize (10000);
-  ec.setSearchMethod (tree);
-  ec.setInputCloud (pcl_cloud);
-  ec.extract (cluster_indices);
+  ec.setClusterTolerance(0.05);  // 5cm
+  ec.setMinClusterSize(5);
+  ec.setMaxClusterSize(10000);
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(pcl_cloud);
+  ec.extract(cluster_indices);
 
-  if(0==cluster_indices.size()){return ;}
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_tmp (new pcl::PointCloud<pcl::PointXYZ>);
+  if (0 == cluster_indices.size()) {
+    return;
+  }
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_tmp(new pcl::PointCloud<pcl::PointXYZ>);
   // pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-  for (std::vector<int>::const_iterator pit = cluster_indices.at(0).indices.begin (); pit != cluster_indices.at(0).indices.end (); ++pit){
-     pc_tmp->points.push_back (pcl_cloud->points[*pit]); //*
+  for (std::vector<int>::const_iterator pit = cluster_indices.at(0).indices.begin();
+       pit != cluster_indices.at(0).indices.end(); ++pit) {
+    pc_tmp->points.push_back(pcl_cloud->points[*pit]);  //*
   }
   pc_tmp->width = pc_tmp->points.size();
   pc_tmp->height = 1;
