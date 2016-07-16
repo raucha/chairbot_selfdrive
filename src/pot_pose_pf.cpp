@@ -181,6 +181,7 @@ void PublishPose() {
   pose_msg.pose.pose.position.x = pose(1);
   pose_msg.pose.pose.position.y = pose(2);
 
+  // パーティクルの重み付き平均算出(ベクトル利用)
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
   vector<WeightedSample<ColumnVector> > samples;
   samples = g_filter->getNewSamples();
@@ -195,7 +196,10 @@ void PublishPose() {
   double ang = atan2(ang_y, ang_x);
   pose_msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(ang);
 
-  const float wheel2base = 0.3;
+  // 車輪->base_footprintのぶんだけオフセットする
+  // @todo: 現在はオフセットしていない
+  // const float wheel2base = 0.3;
+  const float wheel2base = 0.0;
   float tmp90 = 90.0 * M_PI / 180.0;
   double ang2[] = {ang + tmp90, ang - tmp90};
   geometry_msgs::Point p2[2];
@@ -278,15 +282,11 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   SymmetricMatrix cov(INPUT_SIZE);
   const double cov_min = 0.0000001;
   // const double cov_min = 0.01;
-  cov = 0.0;
-  // cov(1, 1) = 0.001;
-  // cov(1, 1) = max(pow(0.2*input(1),2), cov_min);
-  cov(1, 1) = pow(0.1 * max(input(1), cov_min), 2);
+  const float wheel_rad = 0.27;
+  cov(1, 1) = pow(0.05 * max(input(1), cov_min), 2);
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
-  // cov(2, 2) = 0.001;
-  cov(2, 2) = pow(0.1 * max(input(2), 5.0 * M_PI / 180.0), 2);
-  // cov(2, 2) = max(pow(0.1*input(2),2), cov_min);
+  cov(2, 2) = pow(0.1 * max(fabs(input(1))/wheel_rad + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
   Gaussian gaus_noise(mu, cov);
   NonlinearSystemPdf sys_pdf(gaus_noise);
   g_sys_model->SystemPdfSet(&sys_pdf);
@@ -302,28 +302,18 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
  */
 void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   g_latest_header = arg->header;
-  geometry_msgs::PointStamped mapPoint;  
+  geometry_msgs::PointStamped mapPoint;
   try {
     geometry_msgs::TransformStamped mapSframeTransMsg;
-    // tfBuffer_.waitForTransform("map", "arg->header.frame_id", arg->header.stamp, ros::Duration(3.0));
-    // mapSframeTransMsg = tfBuffer_.lookupTransform("map", arg->header.frame_id, /*ros::Time(0)*/ arg->header.stamp),ros::Duration(3.0);
-    mapSframeTransMsg = tfBuffer_.lookupTransform("map", arg->header.frame_id, /*ros::Time(0)*/ /*arg->header.stamp*/ros::Time(),ros::Duration(3.0));    
+    mapSframeTransMsg = tfBuffer_.lookupTransform(
+        "map", arg->header.frame_id, /*ros::Time(0)*/ /*arg->header.stamp*/ ros::Time(),
+        ros::Duration(3.0));
     tf2::doTransform(*arg, mapPoint, mapSframeTransMsg);
-    // tf2::Transform mapSframeTrans;
-    // tf2::fromMsg(
-    //   tfBuffer_.lookupTransform("map", arg->header.frame_id, ros::Time(0) /*arg->header.stamp*/).transform,
-    //   mapSframeTrans);
-
-    // mapPoseTrans = mapSframeTrans * sframePoseTrans;
-    // mapPoseTrans.getOrigin().setZ(0);
-    // ROS_INFO_STREAM("mapPoseTrans x:" << mapPoseTrans.getOrigin().getX() << "y:" << mapPoseTrans.getOrigin().getY()
-    //                                   << "z:" << mapPoseTrans.getOrigin().getZ());
-    // tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", "odom", ros::Time(0) /*arg->header.stamp*/).transform,
-    //              baseOdomTrans);
-  } catch (tf2::TransformException &ex) {
+  } catch (tf2::TransformException& ex) {
     ROS_WARN("Could NOT transform : %s", ex.what());
+    return;
   }
-  
+
   if (!is_got_initial_pose) {
     //パーティクルの初期配置
     ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
@@ -333,13 +323,13 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     prior_Mu(2) = mapPoint.point.y;
     prior_Mu(3) = 0.0;  //角度
     SymmetricMatrix prior_Cov(STATE_SIZE);
-    // prior_Cov(1, 1) = pow(5.0, 2);
-    prior_Cov(1, 1) = pow(1.0, 2);
+    // prior_Cov(1, 1) = pow(1.0, 2);
+    prior_Cov(1, 1) = pow(0.1, 2);
     prior_Cov(1, 2) = 0.0;
     prior_Cov(1, 3) = 0.0;
     prior_Cov(2, 1) = 0.0;
-    // prior_Cov(2, 2) = pow(5.0, 2);
-    prior_Cov(2, 2) = pow(1.0, 2);
+    // prior_Cov(2, 2) = pow(1.0, 2);
+    prior_Cov(2, 2) = pow(0.1, 2);
     prior_Cov(2, 3) = 0.0;
     prior_Cov(3, 1) = 0.0;
     prior_Cov(3, 2) = 0.0;
@@ -348,14 +338,16 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     Gaussian prior_cont(prior_Mu, prior_Cov);
 
     // Discrete prior for Particle filter (using the continuous Gaussian prior)
-    const int NUM_SAMPLES = 1000;
+    const int NUM_SAMPLES = 200;
+    // const int NUM_SAMPLES = 1000;
     // 初期分布が離散化されたパーティクルを取得
     vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
     prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
     MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
     prior_discr.ListOfSamplesSet(prior_samples);
     // パーティクルフィルタを生成
-    g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
+    // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
+    g_filter = new CustomParticleFilter(&prior_discr, 0.1, NUM_SAMPLES*9.0/10.0, MULTINOMIAL_RS);
     is_got_initial_pose = true;
     return;
   }
@@ -441,10 +433,10 @@ int main(int argc, char** argv) {
 
   ROS_INFO("Hello World!");
   ros::init(argc, argv, "bfl_pf");
-    // tf
+  // tf
   tf2_ros::TransformListener tmp_listener(tfBuffer_);
   tfListener_ = &tmp_listener;
-  
+
   ros::NodeHandle nh;
   // ros::NodeHandle nh_private("~");
   pub_filtered = nh.advertise<nav_msgs::Odometry>("pf_filtered", 5);

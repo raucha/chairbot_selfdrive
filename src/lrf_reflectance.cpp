@@ -101,7 +101,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_tmp2 (new pcl::PointCloud<pcl::PointXYZ>);  
   vg.setInputCloud (pcl_cloud);
-  vg.setLeafSize (0.02f, 0.02f, 0.02f);
+  vg.setLeafSize (0.01f, 0.01f, 0.01f);
   // vg.setLeafSize (1.0f, 1.0f, 1.0f);
   vg.filter (*pc_tmp2);
   *pcl_cloud = *pc_tmp2;
@@ -112,7 +112,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance (0.5); // 10cm
+  ec.setClusterTolerance (0.05); // 5cm
   ec.setMinClusterSize (5);
   ec.setMaxClusterSize (10000);
   ec.setSearchMethod (tree);
