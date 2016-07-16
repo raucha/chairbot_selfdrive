@@ -8,8 +8,11 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <std_msgs/Header.h>
 #include <tf/tf.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 //////////////////////
 //////////////////////
@@ -154,6 +157,8 @@ ros::Publisher pub_filtered;
 ros::Publisher particle_pub;
 bool is_got_initial_pose = false;
 std_msgs::Header g_latest_header;
+tf2_ros::Buffer tfBuffer_;
+tf2_ros::TransformListener *tfListener_;
 
 /**
  * @brief PFで推定した姿勢を発行
@@ -211,6 +216,9 @@ void PublishPose() {
   pub_filtered.publish(pose_msg);
 }
 
+/**
+ * @brief パーティクル自体を発行
+ */
 void PublishParticles() {
   if (!is_got_initial_pose) {
     return;
@@ -294,12 +302,35 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
  */
 void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   g_latest_header = arg->header;
+  geometry_msgs::PointStamped mapPoint;  
+  try {
+    geometry_msgs::TransformStamped mapSframeTransMsg;
+    // tfBuffer_.waitForTransform("map", "arg->header.frame_id", arg->header.stamp, ros::Duration(3.0));
+    // mapSframeTransMsg = tfBuffer_.lookupTransform("map", arg->header.frame_id, /*ros::Time(0)*/ arg->header.stamp),ros::Duration(3.0);
+    mapSframeTransMsg = tfBuffer_.lookupTransform("map", arg->header.frame_id, /*ros::Time(0)*/ /*arg->header.stamp*/ros::Time(),ros::Duration(3.0));    
+    tf2::doTransform(*arg, mapPoint, mapSframeTransMsg);
+    // tf2::Transform mapSframeTrans;
+    // tf2::fromMsg(
+    //   tfBuffer_.lookupTransform("map", arg->header.frame_id, ros::Time(0) /*arg->header.stamp*/).transform,
+    //   mapSframeTrans);
+
+    // mapPoseTrans = mapSframeTrans * sframePoseTrans;
+    // mapPoseTrans.getOrigin().setZ(0);
+    // ROS_INFO_STREAM("mapPoseTrans x:" << mapPoseTrans.getOrigin().getX() << "y:" << mapPoseTrans.getOrigin().getY()
+    //                                   << "z:" << mapPoseTrans.getOrigin().getZ());
+    // tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", "odom", ros::Time(0) /*arg->header.stamp*/).transform,
+    //              baseOdomTrans);
+  } catch (tf2::TransformException &ex) {
+    ROS_WARN("Could NOT transform : %s", ex.what());
+  }
   
   if (!is_got_initial_pose) {
     //パーティクルの初期配置
     ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
-    prior_Mu(1) = arg->point.x;
-    prior_Mu(2) = arg->point.y;
+    // prior_Mu(1) = arg->point.x;
+    // prior_Mu(2) = arg->point.y;
+    prior_Mu(1) = mapPoint.point.x;
+    prior_Mu(2) = mapPoint.point.y;
     prior_Mu(3) = 0.0;  //角度
     SymmetricMatrix prior_Cov(STATE_SIZE);
     // prior_Cov(1, 1) = pow(5.0, 2);
@@ -329,8 +360,10 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     return;
   }
   ColumnVector measurement(2);  // [x, y]
-  measurement(1) = arg->point.x;
-  measurement(2) = arg->point.y;
+  // measurement(1) = arg->point.x;
+  // measurement(2) = arg->point.y;
+  measurement(1) = mapPoint.point.x;
+  measurement(2) = mapPoint.point.y;
 
   // /*********************************
   //  * NonLinear Measurement model   *
@@ -408,6 +441,10 @@ int main(int argc, char** argv) {
 
   ROS_INFO("Hello World!");
   ros::init(argc, argv, "bfl_pf");
+    // tf
+  tf2_ros::TransformListener tmp_listener(tfBuffer_);
+  tfListener_ = &tmp_listener;
+  
   ros::NodeHandle nh;
   // ros::NodeHandle nh_private("~");
   pub_filtered = nh.advertise<nav_msgs::Odometry>("pf_filtered", 5);

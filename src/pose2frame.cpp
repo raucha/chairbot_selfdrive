@@ -26,16 +26,17 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &arg) {
   tf2::Transform baseOdomTrans;
   try {
     tf2::Transform mapSframeTrans;
-    tf2::fromMsg(tfBuffer_.lookupTransform("map", arg->header.frame_id, ros::Time(0) /*arg->header.stamp*/).transform,
+    tf2::fromMsg(tfBuffer_.lookupTransform("map", arg->header.frame_id, ros::Time::now() /*arg->header.stamp*/,ros::Duration(3.0)).transform,
                  mapSframeTrans);
     mapPoseTrans = mapSframeTrans * sframePoseTrans;
     mapPoseTrans.getOrigin().setZ(0);
     ROS_INFO_STREAM("mapPoseTrans x:" << mapPoseTrans.getOrigin().getX() << "y:" << mapPoseTrans.getOrigin().getY()
                                       << "z:" << mapPoseTrans.getOrigin().getZ());
-    tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", "odom", ros::Time(0) /*arg->header.stamp*/).transform,
+    tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", "odom", ros::Time::now() /*arg->header.stamp*/,ros::Duration(3.0)).transform,
                  baseOdomTrans);
   } catch (tf2::TransformException &ex) {
     ROS_WARN("Could NOT transform : %s", ex.what());
+    return ;
   }
 
   tf2::Transform mapOdomTrans;
