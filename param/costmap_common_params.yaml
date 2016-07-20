@@ -15,13 +15,13 @@ obstacle_layer:
   mark_threshold:       0
   combination_method:   1
   track_unknown_space:  true    #true needed for disabling global path planning through unknown space
-  obstacle_range: 15           # この範囲内でのみマップへ障害物を挿入
-  raytrace_range: 15           # この範囲内でのみレイトレースでマップをクリアリング
+  obstacle_range: 3           # この範囲内でのみマップへ障害物を挿入
+  raytrace_range: 3           # この範囲内でのみレイトレースでマップをクリアリング
   origin_z: 0.0
   z_resolution: 0.2             # 各ボクセルの高さ
   z_voxels: 2                   # ボクセルを縦に積む個数，これだと40cm・・・？
   publish_voxel_map: false
-  observation_sources:  scan scan1
+  observation_sources:  scan scan1 scan2 scan3 scan4 scan5 scan6 scan7 scan8 scan9 scan10 
   scan:
     data_type: LaserScan
     topic: scan
@@ -31,8 +31,70 @@ obstacle_layer:
     # max_obstacle_height: 1.0  # これより高さの高い観測点は排除，デフォルトで2.0
   scan1:
     data_type: LaserScan
-    topic: /pot4/scan
-    # topic: scan1
+    topic: pot1_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan2:
+    data_type: LaserScan
+    topic: pot2_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan3:
+    data_type: LaserScan
+    topic: pot3_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan4:
+    data_type: LaserScan
+    topic: pot4_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan5:
+    data_type: LaserScan
+    topic: pot5_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan6:
+    data_type: LaserScan
+    topic: pot6_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan7:
+    data_type: LaserScan
+    topic: pot7_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan8:
+    data_type: LaserScan
+    topic: pot8_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan9:
+    data_type: LaserScan
+    topic: pot9_scan_croped
+    marking: true               # マップへの障害物挿入に利用
+    clearing: true              # マップの障害物除去に利用
+    min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0
+    max_obstacle_height: 2.0  # これより高さの高い観測点は排除，デフォルトで2.0
+  scan10:
+    data_type: LaserScan
+    topic: pot10_scan_croped
     marking: true               # マップへの障害物挿入に利用
     clearing: true              # マップの障害物除去に利用
     min_obstacle_height: -1    # これより高さの低い観測点は排除，デフォルトで0.0

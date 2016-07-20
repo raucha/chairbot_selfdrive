@@ -312,7 +312,7 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   try {
     geometry_msgs::TransformStamped mapSframeTransMsg;
     mapSframeTransMsg = tfBuffer_.lookupTransform(
-        "map", arg->header.frame_id, /*ros::Time(0)*/ /*arg->header.stamp*/ ros::Time(),
+        "map", arg->header.frame_id, /*ros::Time(0)*/ arg->header.stamp /*ros::Time()*/,
         ros::Duration(3.0));
     tf2::doTransform(*arg, mapPoint, mapSframeTransMsg);
   } catch (tf2::TransformException& ex) {
@@ -329,13 +329,13 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     prior_Mu(2) = mapPoint.point.y;
     prior_Mu(3) = 0.0;  //角度
     SymmetricMatrix prior_Cov(STATE_SIZE);
-    // prior_Cov(1, 1) = pow(1.0, 2);
-    prior_Cov(1, 1) = pow(0.1, 2);
+    // prior_Cov(1, 1) = pow(0.3, 2);
+    prior_Cov(1, 1) = pow(0.3, 2);
     prior_Cov(1, 2) = 0.0;
     prior_Cov(1, 3) = 0.0;
     prior_Cov(2, 1) = 0.0;
-    // prior_Cov(2, 2) = pow(1.0, 2);
-    prior_Cov(2, 2) = pow(0.1, 2);
+    // prior_Cov(2, 2) = pow(0.3, 2);
+    prior_Cov(2, 2) = pow(0.3, 2);
     prior_Cov(2, 3) = 0.0;
     prior_Cov(3, 1) = 0.0;
     prior_Cov(3, 2) = 0.0;

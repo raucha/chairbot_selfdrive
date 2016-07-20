@@ -1,11 +1,11 @@
 <launch>
   <group ns="mimamorukun">
     <!-- LRFを起動 -->
-    <!--<include file="$(find chairbot_selfdrive)/launch/includes/lrf0.launch.xml">
+    <include file="$(find chairbot_selfdrive)/launch/includes/lrf0.launch.xml">
       <arg name="topic_name" value="scan_raw"/>
-    </include>-->
+    </include>
     <!--矩形切り捨て-->
-    <!--<node pkg="raucha_utils" type="laser_crop_rect" name="$(anon scan_crop)" output="screen">
+    <node pkg="raucha_utils" type="laser_crop_rect" name="$(anon scan_crop)" output="screen">
       <remap from="scan_in" to="scan_raw" />
       <remap from="scan_out" to="scan" />
       <param name="xmin" value="-0.15" />
@@ -13,20 +13,25 @@
       <param name="ymin" value="-0.5" />
       <param name="ymax" value="0.5" />
       <param name="frame_id" value="base_footprint" />
-    </node>-->
+    </node>
 
     <!-- Map server -->
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_w2b2.yaml" />
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f2.yaml" />
 
     <!-- Localization -->
+    <!--部屋の前-->
     <!--<arg name="initial_pose_x" default="0.0" />
     <arg name="initial_pose_y" default="0.0" />
-    <arg name="initial_pose_a" default="0.0" />
+    <arg name="initial_pose_a" default="-0.9599310885968813" />-->
+    <!--エレベータの前-->
+    <arg name="initial_pose_x" default="7.831" />
+    <arg name="initial_pose_y" default="-18.143" />
+    <arg name="initial_pose_a" default="2.3825315086049392" />
     <include file="$(find chairbot_selfdrive)/launch/includes/amcl.launch.xml">
       <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
       <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
       <arg name="initial_pose_a" value="$(arg initial_pose_a)" />
-    </include>-->
+    </include>
 
     <!-- Move base -->
     <include file="$(find chairbot_selfdrive)/launch/includes/move_base.launch.xml" />

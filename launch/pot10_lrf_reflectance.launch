@@ -1,0 +1,32 @@
+<launch>
+    <node name="reflec_pot1" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable1/scan" />
+    </node>
+    <node name="reflec_pot2" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable2/scan" />
+    </node>
+    <node name="reflec_pot3" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable3/scan" />
+    </node>
+    <node name="reflec_pot4" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable4/scan" />
+    </node>
+    <node name="reflec_pot5" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable5/scan" />
+    </node>
+    <node name="reflec_pot6" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable6/scan" />
+    </node>
+    <node name="reflec_pot7" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable7/scan" />
+    </node>
+    <node name="reflec_pot8" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable8/scan" />
+    </node>
+    <node name="reflec_pot9" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable9/scan" />
+    </node>
+    <node name="reflec_pot10" type="lrf_reflectance" pkg="chairbot_selfdrive" output="screen">
+        <remap from="scan_in" to="portable10/scan" />
+    </node>
+</launch>
