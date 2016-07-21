@@ -112,8 +112,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
   /// クラスタリング、固まった点群を抽出
   // Creating the KdTree object for the search method of the extraction
-  if(0 == pcl_cloud->points.size()){
-    return ;
+  if (0 == pcl_cloud->points.size()) {
+    return;
   }
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
   tree->setInputCloud(pcl_cloud);
@@ -152,22 +152,27 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   // centroid.get (center);
   pcl::PointXYZ center;
   geometry_msgs::PoseStamped pose;
-  for (pcl::PointCloud<pcl::PointXYZ>::iterator iter = pcl_cloud->begin(); iter != pcl_cloud->end(); iter++) {
+  for (pcl::PointCloud<pcl::PointXYZ>::iterator iter = pcl_cloud->begin(); iter != pcl_cloud->end();
+       iter++) {
     pose.pose.position.x += iter->x;
     pose.pose.position.y += iter->y;
     pose.pose.position.z += iter->z;
   }
-  if (0 == pcl_cloud->size()){return;}
-  pose.pose.position.x /= (float) pcl_cloud->size();
-  pose.pose.position.y /= (float) pcl_cloud->size();
-  pose.pose.position.z /= (float) pcl_cloud->size();
+  if (0 == pcl_cloud->size()) {
+    return;
+  }
+  pose.pose.position.x /= (float)pcl_cloud->size();
+  pose.pose.position.y /= (float)pcl_cloud->size();
+  pose.pose.position.z /= (float)pcl_cloud->size();
 
   /// RANSACで直線検出
   // created RandomSampleConsensus object and compute the appropriated model
-  // pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr model_p (new pcl::SampleConsensusModelPlane<pcl::PointXYZ> (pcl_cloud));
-  pcl::SampleConsensusModelLine<pcl::PointXYZ>::Ptr model_p (new pcl::SampleConsensusModelLine<pcl::PointXYZ> (pcl_cloud));
-  pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_p);
-  ransac.setDistanceThreshold (.01);
+  // pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr model_p (new
+  // pcl::SampleConsensusModelPlane<pcl::PointXYZ> (pcl_cloud));
+  pcl::SampleConsensusModelLine<pcl::PointXYZ>::Ptr model_p(
+      new pcl::SampleConsensusModelLine<pcl::PointXYZ>(pcl_cloud));
+  pcl::RandomSampleConsensus<pcl::PointXYZ> ransac(model_p);
+  ransac.setDistanceThreshold(.01);
   ransac.computeModel();
   std::vector<int> inliers;
   ransac.getInliers(inliers);
@@ -182,9 +187,10 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   //   std::cout << *i << ' ';
   // std::cout << std::endl;
 
-  // ROS_INFO_STREAM(((double)model_coefficients[4]) <<"  "<< ((double)model_coefficients[4])<< "  "<<M_PI;);
+  // ROS_INFO_STREAM(((double)model_coefficients[4]) <<"  "<< ((double)model_coefficients[4])<< "
+  // "<<M_PI;);
   double ang = atan2(((double)model_coefficients[4]), ((double)model_coefficients[3]));
-  while(0.0>ang){
+  while (0.0 > ang) {
     ang += M_PI;
   }
   // ROS_INFO_STREAM("ang:"<<ang);
@@ -210,7 +216,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     pose.pose.position = p2[1];
   }
   tf2::Quaternion tmp_quat;
-  tmp_quat.setEuler(0,0, ang);
+  tmp_quat.setEuler(0, 0, ang);
   // pose.pose.orientation = tmp_quat;
   pose.pose.orientation = tf2::toMsg(tmp_quat);
   // pose.pose.orientation = tmp_quat;
