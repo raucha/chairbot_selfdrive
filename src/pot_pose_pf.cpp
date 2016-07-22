@@ -14,6 +14,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+const float WHEEL_RAD = 0.27;
+
 //////////////////////
 //////////////////////
 // nonlinearSystemPdf/
@@ -50,10 +52,29 @@ class NonlinearSystemPdf
     Sample<ColumnVector> noise;  //! [v, sigma]
     _additiveNoise.SampleFrom(noise, method, args);
 
+
     // system update
-    state(1) += cos(state(3)) * (vel(1) + noise.ValueGet()(1));
-    state(2) += sin(state(3)) * (vel(1) + noise.ValueGet()(1));
-    state(3) += (vel(2) + noise.ValueGet()(2));
+    float Vl_err = noise.ValueGet()(1);
+    float Vr_err = noise.ValueGet()(2);
+    float Vl = (vel(1)-vel(2)*WHEEL_RAD) * (1.0+Vl_err+state(4));
+    float Vr = (vel(1)+vel(2)*WHEEL_RAD) * (1.0+Vr_err+state(5));
+    float v = (Vl+Vr)/2.0;
+    // float s = WHEEL_RAD*(Vr-Vl)/2.0;
+    float s = (Vr-Vl)/(2.0*WHEEL_RAD);
+    ROS_DEBUG_STREAM("vel(1):"<<vel(1)<<"  Vl_err:"<<Vl_err<<"  Vl:"<<Vl<<"  v:"<<v);
+
+    // state(1) += cos(state(3)) * (vel(1) + noise.ValueGet()(1));
+    // state(2) += sin(state(3)) * (vel(1) + noise.ValueGet()(1));
+
+    state(1) += cos(state(3)) * v;
+    state(2) += sin(state(3)) * v;
+    state(3) += s;
+    state(4) = state(4)*0.999 + Vl_err*0.001;
+    state(5) = state(5)*0.999 + Vr_err*0.001;
+    // static int num = 0;
+    // num++;
+    // state(4) += (Vl_err-state(4))/(double)num;
+    // state(5) += (Vr_err-state(5))/(double)num;
     // std::cout << "cov: " << _additiveNoise.CovarianceGet() << std::endl;
     // std::cout << "predict: " << vel(1) << "  " << vel(2) << std::endl;
 
@@ -151,7 +172,8 @@ using namespace MatrixWrapper;
 // using namespace BFL;
 using namespace std;
 
-const int STATE_SIZE = 3;
+// const int STATE_SIZE = 3;
+const int STATE_SIZE = 5; //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
 const int INPUT_SIZE = 2;
 const int MEAS_SIZE = 2;
 
@@ -165,6 +187,8 @@ bool is_got_initial_pose = false;
 std_msgs::Header g_latest_header;
 tf2_ros::Buffer tfBuffer_;
 tf2_ros::TransformListener* tfListener_;
+std::vector<geometry_msgs::PointStamped> observeBuffer;
+std::vector<nav_msgs::Odometry> odomBuffer;
 
 /**
  * @brief PFで推定した姿勢を発行
@@ -176,6 +200,8 @@ void PublishPose() {
   Pdf<ColumnVector>* posterior = g_filter->PostGet();
   ColumnVector pose = posterior->ExpectedValueGet();
   SymmetricMatrix pose_cov = posterior->CovarianceGet();
+
+  ROS_INFO_STREAM("Err_l:"<<pose(4)<<" Err_r:"<<pose(5));
 
   nav_msgs::Odometry pose_msg;
   // pose_msg.header.stamp = ros::Time::now();
@@ -257,6 +283,9 @@ void PublishParticles() {
   particle_pub.publish(particles_msg);
 }
 
+ros::Time odomLast;
+ros::Time observeLast;
+
 /**
  * @brief オドメトリでパーティクルの予測（移動）
  * @param arg オドメトリ
@@ -266,6 +295,7 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
     return;
   }
   g_latest_header = arg->header;
+  odomLast = arg->header.stamp;
   static ros::Time prevNavDataTime;
   if (prevNavDataTime.isZero()) {
     prevNavDataTime = arg->header.stamp;
@@ -284,15 +314,17 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   ColumnVector mu(INPUT_SIZE);
   mu(1) = 0.0;
   mu(2) = 0.0;
-  // mu(3) = 0.0;
   SymmetricMatrix cov(INPUT_SIZE);
   const double cov_min = 0.0000001;
   // const double cov_min = 0.01;
-  const float wheel_rad = 0.27;
-  cov(1, 1) = pow(0.05 * max(input(1), cov_min), 2);
+  // cov(1, 1) = pow(0.05 * max(input(1), cov_min), 2);
+  // cov(1, 2) = 0.0;
+  // cov(2, 1) = 0.0;  const float WHEEL_RAD = 0.27;
+  // cov(2, 2) = pow(0.1 * max(fabs(input(1)) / WHEEL_RAD + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
+  cov(1, 1) = pow(0.1, 2);
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
-  cov(2, 2) = pow(0.1 * max(fabs(input(1)) / wheel_rad + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
+  cov(2, 2) = pow(0.1, 2);
   Gaussian gaus_noise(mu, cov);
   NonlinearSystemPdf sys_pdf(gaus_noise);
   g_sys_model->SystemPdfSet(&sys_pdf);
@@ -308,6 +340,7 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
  */
 void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   g_latest_header = arg->header;
+  observeLast = arg->header.stamp;
   geometry_msgs::PointStamped mapPoint;
   try {
     geometry_msgs::TransformStamped mapSframeTransMsg;
@@ -328,7 +361,10 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     prior_Mu(1) = mapPoint.point.x;
     prior_Mu(2) = mapPoint.point.y;
     prior_Mu(3) = 0.0;  //角度
+    prior_Mu(4) = 0.0;  //左車輪定常ノイズ
+    prior_Mu(5) = 0.0;  //右車輪定常ノイズ
     SymmetricMatrix prior_Cov(STATE_SIZE);
+    prior_Cov = 0.0;
     // prior_Cov(1, 1) = pow(0.3, 2);
     prior_Cov(1, 1) = pow(0.3, 2);
     prior_Cov(1, 2) = 0.0;
@@ -358,6 +394,13 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     is_got_initial_pose = true;
     return;
   }
+
+  /// タイムスタンプ確認
+  if(ros::Duration(1.0) < odomLast-observeLast){
+    ROS_INFO_STREAM("time diff:"<<odomLast-observeLast);
+    ROS_WARN("too large timegap. skip to update PF");
+    return;
+  }
   ColumnVector measurement(2);  // [x, y]
   // measurement(1) = arg->point.x;
   // measurement(2) = arg->point.y;
@@ -384,6 +427,25 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   PublishPose();
   PublishParticles();
 }
+
+// void PushOdom(const nav_msgs::Odometry::ConstPtr& arg){
+//   odomBuffer.pushback(*arg);
+// }
+
+// void PushObserve(const geometry_msgs::PointStamped::ConstPtr& arg){
+//   observeBuffer.pushback(*arg);
+// }
+
+// /**
+//  * @brief call PF as stamped time
+//  * @param e TimerEvent status
+//  */
+// void pf_spin(const ros::TimerEvent& e){
+//   ROS_DEBUG("Spin function at time %f", ros::Time::now().toSec());
+//   ros::Time filter_stamp_ = ros::Time::now()-ros::Duration(2.0);
+//   filter_stamp_ = min(filter_stamp_, odom_stamp_);
+//   if (imu_active_)   filter_stamp_ = min(filter_stamp_, imu_stamp_);
+// }
 
 /**
  * @brief main
@@ -451,6 +513,9 @@ int main(int argc, char** argv) {
   ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
   ros::Subscriber pf_update_sub =
       nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
+  // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);
+  // ros::Subscriber pf_update_sub =
+  //     nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, PushObserve);
   ros::spin();
   delete g_filter;
 }
