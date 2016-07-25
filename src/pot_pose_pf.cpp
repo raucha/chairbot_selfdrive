@@ -28,7 +28,6 @@ const float WHEEL_RAD = 0.27;
 
 namespace BFL {
 using namespace MatrixWrapper;
-/// NonLinear Conditional Gaussian
 class NonlinearSystemPdf
     : public ConditionalPdf<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
@@ -39,68 +38,53 @@ class NonlinearSystemPdf
     _additiveNoise = additiveNoise;
   }
   virtual ~NonlinearSystemPdf(){};
-  // implement this virtual function for system model of a particle filter
-  //! 要はノイズの乗った次状態予測値をone_sampleで返せればおｋ
+  /**
+ * @brief パーティクルの移動
+ * @param one_sample 状態遷移の完了したパーティクル
+ * @detail 要はノイズの乗った次状態予測値をone_sampleで返せればおｋ
+ */  // implement this virtual function for system model of a particle filter
   virtual bool SampleFrom(Sample<MatrixWrapper::ColumnVector>& one_sample, int method = DEFAULT,
                           void* args = NULL) const {
-    //! [x, y, rad]conditionalpdf
+    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ], パーティクルの状態変数
     ColumnVector state = ConditionalArgumentGet(0);
-    //! [v, sigma]
-    ColumnVector vel = ConditionalArgumentGet(1);
+    //! trans: [移動距離, 角度変化], オドメトリの生データ
+    ColumnVector input = ConditionalArgumentGet(1);
 
     // sample from additive noise
-    Sample<ColumnVector> noise;  //! [v, sigma]
+    ///! noise: [左車輪白色ノイズ, 右車輪白色ノイズ],
+    ///平均値0標準偏差10のガウス分布に従う乱数から値を獲得
+    Sample<ColumnVector> noise;
     _additiveNoise.SampleFrom(noise, method, args);
 
+    // 左右車輪の白色ノイズ
+    float err_l = noise.ValueGet()(1);
+    float err_r = noise.ValueGet()(2);
+    // ノイズの乗った左右車輪速度
+    float Vl = (input(1) - input(2) * WHEEL_RAD) * (1.0 + err_l + state(4));
+    float Vr = (input(1) + input(2) * WHEEL_RAD) * (1.0 + err_r + state(5));
+    // 移動距離，変化角度
+    const float vel = (Vl + Vr) / 2.0;
+    const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
+    ROS_DEBUG_STREAM("input(1):" << input(1) << "  err_l:" << err_l << "  Vl:" << Vl
+                                 << "  vel:" << vel);
 
-    // system update
-    float Vl_err = noise.ValueGet()(1);
-    float Vr_err = noise.ValueGet()(2);
-    float Vl = (vel(1)-vel(2)*WHEEL_RAD) * (1.0+Vl_err+state(4));
-    float Vr = (vel(1)+vel(2)*WHEEL_RAD) * (1.0+Vr_err+state(5));
-    float v = (Vl+Vr)/2.0;
-    // float s = WHEEL_RAD*(Vr-Vl)/2.0;
-    float s = (Vr-Vl)/(2.0*WHEEL_RAD);
-    ROS_DEBUG_STREAM("vel(1):"<<vel(1)<<"  Vl_err:"<<Vl_err<<"  Vl:"<<Vl<<"  v:"<<v);
+    ///! パーティクルの状態変数を更新
+    state(1) += cos(state(3)) * vel;
+    state(2) += sin(state(3)) * vel;
+    state(3) += omega;
+    // 白色ノイズにLRFを掛けて定常ノイズとして利用
+    // state(4) = state(4) * 0.95 + err_l * 0.05;
+    // state(5) = state(5) * 0.95 + err_r * 0.05;
 
-    // state(1) += cos(state(3)) * (vel(1) + noise.ValueGet()(1));
-    // state(2) += sin(state(3)) * (vel(1) + noise.ValueGet()(1));
-
-    state(1) += cos(state(3)) * v;
-    state(2) += sin(state(3)) * v;
-    state(3) += s;
-    state(4) = state(4)*0.999 + Vl_err*0.001;
-    state(5) = state(5)*0.999 + Vr_err*0.001;
+    //// 白色ノイズの平均値を取って定常ノイズとして利用
     // static int num = 0;
     // num++;
-    // state(4) += (Vl_err-state(4))/(double)num;
-    // state(5) += (Vr_err-state(5))/(double)num;
-    // std::cout << "cov: " << _additiveNoise.CovarianceGet() << std::endl;
-    // std::cout << "predict: " << vel(1) << "  " << vel(2) << std::endl;
+    // state(4) += (err_l-state(4))/(double)num;
+    // state(5) += (err_r-state(5))/(double)num;
 
-    // store results in one_sample
+    // パーティクルの新しい状態を返す
     one_sample.ValueSet(state);
-    // one_sample.ValueSet(state + noise.ValueGet());
-
     return true;
-    // ColumnVector state = ConditionalArgumentGet(0);
-    // ColumnVector vel = ConditionalArgumentGet(1);
-    //
-    // // system update
-    // state(1) += cos(state(3)) * vel(1);  //* 100;
-    // state(2) += sin(state(3)) * vel(1);  // * 100;
-    // state(3) += vel(2);
-    // // std::cout << "cov: " << _additiveNoise.CovarianceGet() << std::endl;
-    // // std::cout << "predict: " << vel(1) << "  " << vel(2) << std::endl;
-    //
-    // // sample from additive noise
-    // Sample<ColumnVector> noise;
-    // _additiveNoise.SampleFrom(noise, method, args);
-    //
-    // // store results in one_sample
-    // one_sample.ValueSet(state + noise.ValueGet());
-    //
-    // return true;
   }
 
  private:
@@ -128,10 +112,14 @@ class NonlinearMeasurementPdf
   }
   virtual ~NonlinearMeasurementPdf() {}
 
-  // implement this virtual function for measurement model of a particle filter
-  //! 要は確率をProbability型で返せればおｋ
-  //  Probability p(0.3)とかでも作れる
+  /**
+ * @brief パーティクルの確率取得
+ * @param measurement センサで観測されたグローバル座標
+ * @detail 要は確率をProbability型で返せればおｋ
+ *          Probability p(0.3)とかでも作れる
+ */  // implement this virtual function for measurement model of a particle filter
   virtual Probability ProbabilityGet(const MatrixWrapper::ColumnVector& measurement) const {
+    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ], パーティクルの状態変数
     ColumnVector state = ConditionalArgumentGet(0);
     ColumnVector expected_measurement(2);
     expected_measurement(1) = state(1);
@@ -173,7 +161,7 @@ using namespace MatrixWrapper;
 using namespace std;
 
 // const int STATE_SIZE = 3;
-const int STATE_SIZE = 5; //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
+const int STATE_SIZE = 5;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
 const int INPUT_SIZE = 2;
 const int MEAS_SIZE = 2;
 
@@ -201,13 +189,10 @@ void PublishPose() {
   ColumnVector pose = posterior->ExpectedValueGet();
   SymmetricMatrix pose_cov = posterior->CovarianceGet();
 
-  ROS_INFO_STREAM("Err_l:"<<pose(4)<<" Err_r:"<<pose(5));
+  ROS_INFO_STREAM("Err_l:" << pose(4) << " Err_r:" << pose(5));
 
   nav_msgs::Odometry pose_msg;
-  // pose_msg.header.stamp = ros::Time::now();
   pose_msg.header.stamp = g_latest_header.stamp;
-  // pose_msg.header.frame_id = "odom";
-  // pose_msg.header.frame_id = "base_scan4";
   pose_msg.header.frame_id = "map";
 
   pose_msg.pose.pose.position.x = pose(1);
@@ -229,7 +214,7 @@ void PublishPose() {
   pose_msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(ang);
 
   // 車輪->base_footprintのぶんだけオフセットする
-  // @todo: 現在はオフセットしていない
+  // @todo: 現在は反射板検出側でオフセットしているので不要な処理
   // const float wheel2base = 0.3;
   const float wheel2base = 0.0;
   float tmp90 = 90.0 * M_PI / 180.0;
@@ -260,10 +245,7 @@ void PublishParticles() {
     return;
   }
   geometry_msgs::PoseArray particles_msg;
-  // particles_msg.header.stamp = ros::Time::now();
   particles_msg.header.stamp = g_latest_header.stamp;
-  // particles_msg.header.frame_id = "odom";
-  // particles_msg.header.frame_id = "base_scan4";
   particles_msg.header.frame_id = "map";
 
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
@@ -291,11 +273,12 @@ ros::Time observeLast;
  * @param arg オドメトリ
  */
 void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
+  /// LRFから初期位置が観測されるまで待つ
   if (!is_got_initial_pose) {
     return;
   }
-  g_latest_header = arg->header;
-  odomLast = arg->header.stamp;
+
+  ///! オドメトリの周期を計算
   static ros::Time prevNavDataTime;
   if (prevNavDataTime.isZero()) {
     prevNavDataTime = arg->header.stamp;
@@ -303,24 +286,22 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   }
   double dt = (arg->header.stamp - prevNavDataTime).toSec();
   prevNavDataTime = arg->header.stamp;
+  g_latest_header = arg->header;
+  odomLast = arg->header.stamp;
 
-  ColumnVector input(2);  // [v, sigma]
+  ///! 移動距離，変化角度計算
+  ColumnVector input(2);  // [v, omega]
   input(1) = dt * arg->twist.twist.linear.x;
   input(2) = dt * arg->twist.twist.angular.z;
 
   //  /****************************
   //  * NonLinear system model      *
   //  ***************************/
+  ///! オドメトリには標準偏差が速度の10%となるガウスノイズがのる
   ColumnVector mu(INPUT_SIZE);
   mu(1) = 0.0;
   mu(2) = 0.0;
   SymmetricMatrix cov(INPUT_SIZE);
-  const double cov_min = 0.0000001;
-  // const double cov_min = 0.01;
-  // cov(1, 1) = pow(0.05 * max(input(1), cov_min), 2);
-  // cov(1, 2) = 0.0;
-  // cov(2, 1) = 0.0;  const float WHEEL_RAD = 0.27;
-  // cov(2, 2) = pow(0.1 * max(fabs(input(1)) / WHEEL_RAD + fabs(input(2)), 0.1 * M_PI / 180.0), 2);
   cov(1, 1) = pow(0.1, 2);
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
@@ -329,7 +310,10 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   NonlinearSystemPdf sys_pdf(gaus_noise);
   g_sys_model->SystemPdfSet(&sys_pdf);
 
+  ///! パーティクルフィルタを更新
   g_filter->Update(g_sys_model, input);
+
+  ///! 推定姿勢発行
   PublishPose();
   PublishParticles();
 }
@@ -356,8 +340,6 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   if (!is_got_initial_pose) {
     //パーティクルの初期配置
     ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
-    // prior_Mu(1) = arg->point.x;
-    // prior_Mu(2) = arg->point.y;
     prior_Mu(1) = mapPoint.point.x;
     prior_Mu(2) = mapPoint.point.y;
     prior_Mu(3) = 0.0;  //角度
@@ -366,12 +348,12 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     SymmetricMatrix prior_Cov(STATE_SIZE);
     prior_Cov = 0.0;
     // prior_Cov(1, 1) = pow(0.3, 2);
-    prior_Cov(1, 1) = pow(0.3, 2);
+    prior_Cov(1, 1) = pow(0.1, 2);
     prior_Cov(1, 2) = 0.0;
     prior_Cov(1, 3) = 0.0;
     prior_Cov(2, 1) = 0.0;
     // prior_Cov(2, 2) = pow(0.3, 2);
-    prior_Cov(2, 2) = pow(0.3, 2);
+    prior_Cov(2, 2) = pow(0.1, 2);
     prior_Cov(2, 3) = 0.0;
     prior_Cov(3, 1) = 0.0;
     prior_Cov(3, 2) = 0.0;
@@ -396,14 +378,12 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   }
 
   /// タイムスタンプ確認
-  if(ros::Duration(1.0) < odomLast-observeLast){
-    ROS_INFO_STREAM("time diff:"<<odomLast-observeLast);
-    ROS_WARN("too large timegap. skip to update PF");
+  if (ros::Duration(1.0) < odomLast - observeLast) {
+    ROS_INFO_STREAM("time diff:" << odomLast - observeLast);
+    ROS_WARN("too large time gap. skip to update PF");
     return;
   }
   ColumnVector measurement(2);  // [x, y]
-  // measurement(1) = arg->point.x;
-  // measurement(2) = arg->point.y;
   measurement(1) = mapPoint.point.x;
   measurement(2) = mapPoint.point.y;
 
