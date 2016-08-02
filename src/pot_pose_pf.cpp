@@ -56,22 +56,44 @@ class NonlinearSystemPdf
     Sample<ColumnVector> noise;
     _additiveNoise.SampleFrom(noise, method, args);
 
-    // 左右車輪の白色ノイズ
-    float err_l = noise.ValueGet()(1);
-    float err_r = noise.ValueGet()(2);
+    // 左右車輪の滑りの白色ノイズ
+    const float err_l = noise.ValueGet()(1);
+    const float err_r = noise.ValueGet()(2);
+    // 左右車輪の直径スケールのノイズ
+    ColumnVector mu(2);
+    mu(1) = 0;
+    mu(2) = 0;
+    SymmetricMatrix cov(2);
+    cov(1, 1) = pow(0.001, 2);
+    cov(1, 2) = 0.0;
+    cov(2, 1) = 0.0;
+    cov(2, 2) = pow(0.001, 2);
+    Gaussian scale_gaus(mu,cov);
+    Sample<ColumnVector> scale_noise;
+    scale_gaus.SampleFrom(scale_noise, method);
+    const float scale_err_l = state(4) + scale_noise.ValueGet()(1);
+    const float scale_err_r = state(5) + scale_noise.ValueGet()(2);
+    if (0.5<fabs(scale_err_l)||0.5<fabs(scale_err_r)){
+      ROS_WARN_STREAM("scale_err_l:"<<scale_err_l<<"   scale_err_r:"<<scale_err_r);
+    }
     // ノイズの乗った左右車輪速度
-    float Vl = (input(1) - input(2) * WHEEL_RAD) * (1.0 + err_l + state(4));
-    float Vr = (input(1) + input(2) * WHEEL_RAD) * (1.0 + err_r + state(5));
+    const float vel_odom = input(1);
+    const float omega_odom = input(2);
+    const float Vl = (vel_odom - omega_odom * WHEEL_RAD) * (1.0 + err_l + scale_err_l);
+    const float Vr = (vel_odom + omega_odom * WHEEL_RAD) * (1.0 + err_r + scale_err_r);
     // 移動距離，変化角度
     const float vel = (Vl + Vr) / 2.0;
     const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
-    ROS_DEBUG_STREAM("input(1):" << input(1) << "  err_l:" << err_l << "  Vl:" << Vl
+    // ROS_INFO_STREAM("scale_err_l:" << scale_err_l);
+    ROS_DEBUG_STREAM("vel_odom:" << vel_odom << "  err_l:" << err_l << "  Vl:" << Vl
                                  << "  vel:" << vel);
 
     ///! パーティクルの状態変数を更新
     state(1) += cos(state(3)) * vel;
     state(2) += sin(state(3)) * vel;
     state(3) += omega;
+    state(4) = scale_err_l;
+    state(5) = scale_err_r;
     // 白色ノイズにLRFを掛けて定常ノイズとして利用
     // state(4) = state(4) * 0.95 + err_l * 0.05;
     // state(5) = state(5) * 0.95 + err_r * 0.05;
@@ -362,7 +384,7 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     Gaussian prior_cont(prior_Mu, prior_Cov);
 
     // Discrete prior for Particle filter (using the continuous Gaussian prior)
-    const int NUM_SAMPLES = 200;
+    const int NUM_SAMPLES = 2000;
     // const int NUM_SAMPLES = 1000;
     // 初期分布が離散化されたパーティクルを取得
     vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
