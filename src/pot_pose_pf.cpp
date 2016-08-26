@@ -69,13 +69,16 @@ class NonlinearSystemPdf
     cov(2, 1) = 0.0;
     cov(2, 2) = pow(0.001, 2);
     Gaussian scale_gaus(mu,cov);
-    Sample<ColumnVector> scale_noise;
+    //! @todo:車輪半径の差は考慮するほどずれていないため無視
+    const float scale_err_l = 0.0;
+    const float scale_err_r = 0.0;
+    /*Sample<ColumnVector> scale_noise;
     scale_gaus.SampleFrom(scale_noise, method);
     const float scale_err_l = state(4) + scale_noise.ValueGet()(1);
     const float scale_err_r = state(5) + scale_noise.ValueGet()(2);
     if (0.5<fabs(scale_err_l)||0.5<fabs(scale_err_r)){
       ROS_WARN_STREAM("scale_err_l:"<<scale_err_l<<"   scale_err_r:"<<scale_err_r);
-    }
+    }*/
     // ノイズの乗った左右車輪速度
     const float vel_odom = input(1);
     const float omega_odom = input(2);
@@ -384,8 +387,7 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     Gaussian prior_cont(prior_Mu, prior_Cov);
 
     // Discrete prior for Particle filter (using the continuous Gaussian prior)
-    const int NUM_SAMPLES = 2000;
-    // const int NUM_SAMPLES = 1000;
+    const int NUM_SAMPLES = 200;
     // 初期分布が離散化されたパーティクルを取得
     vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
     prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
@@ -394,13 +396,13 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
     // パーティクルフィルタを生成
     // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
     g_filter =
-        new CustomParticleFilter(&prior_discr, 0.1, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
+        new CustomParticleFilter(&prior_discr, 0.0, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
     is_got_initial_pose = true;
     return;
   }
 
   /// タイムスタンプ確認
-  if (ros::Duration(1.0) < odomLast - observeLast) {
+  if (ros::Duration(4.0) < odomLast - observeLast) {
     ROS_INFO_STREAM("time diff:" << odomLast - observeLast);
     ROS_WARN("too large time gap. skip to update PF");
     return;

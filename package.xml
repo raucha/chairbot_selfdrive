@@ -52,10 +52,11 @@
   <build_depend>tf</build_depend>
   <build_depend>velodyne</build_depend>
   <build_depend>bfl</build_depend>
+  <build_depend>graph_msgs</build_depend>
+  <build_depend>rosbridge-suite</build_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>myahrs_driver</run_depend>
   <run_depend>nav_msgs</run_depend>
-  <run_depend>graph_msgs</run_depend>
   <!-- <run_depend>novatel-span-driver</run_depend> -->
   <run_depend>robot_localization</run_depend>
   <run_depend>roscpp</run_depend>
@@ -66,6 +67,7 @@
   <run_depend>velodyne</run_depend>
   <run_depend>bfl</run_depend>
   <run_depend>graph_msgs</run_depend>
+  <run_depend>rosbridge-suite</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
