@@ -56,7 +56,7 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &arg) {
   mapOdomTrans = mapPoseTrans * baseOdomTrans;
   mapOdomTransMsg.transform = tf2::toMsg(mapOdomTrans);
   //! @todo: 時間が遅れすぎるので現在時刻を利用している．
-  mapOdomTransMsg.header.stamp = ros::Time::now();  /*arg->header.stamp*/;
+  mapOdomTransMsg.header.stamp = ros::Time::now(); /*arg->header.stamp*/
   mapOdomTransMsg.header.frame_id = "map";
   mapOdomTransMsg.child_frame_id = "odom";
 
@@ -67,8 +67,8 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &arg) {
  * @brief 10Hz周期で"map"->"odom"を発行．
  * @param input 実行時間の遅れとか．不要．
  */
-void timer_callback(const ros::TimerEvent& event){
-  if(!is_got_trans){
+void timer_callback(const ros::TimerEvent &event) {
+  if (!is_got_trans) {
     return;
   }
   //"map" -> "odom"のtfを発行

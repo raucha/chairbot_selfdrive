@@ -9,6 +9,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <std_msgs/Header.h>
 #include <tf/tf.h>
 #include <tf2_ros/transform_listener.h>
@@ -68,7 +69,7 @@ class NonlinearSystemPdf
     cov(1, 2) = 0.0;
     cov(2, 1) = 0.0;
     cov(2, 2) = pow(0.001, 2);
-    Gaussian scale_gaus(mu,cov);
+    Gaussian scale_gaus(mu, cov);
     //! @todo:車輪半径の差は考慮するほどずれていないため無視
     const float scale_err_l = 0.0;
     const float scale_err_r = 0.0;
@@ -164,7 +165,8 @@ class NonlinearMeasurementPdf
 ////////////////////////
 using namespace BFL;
 
-class CustomParticleFilter
+class CustomParticleFilternh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+      "initialpose", 10, initialPose
     : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0,
@@ -202,6 +204,46 @@ tf2_ros::Buffer tfBuffer_;
 tf2_ros::TransformListener* tfListener_;
 std::vector<geometry_msgs::PointStamped> observeBuffer;
 std::vector<nav_msgs::Odometry> odomBuffer;
+
+/**
+ * @brief パーティクルフィルタのパーティクル群を生成
+ * @detail 引数は座標，角度，座標の分散，角度の分散
+ */
+void GenInitialParticles(double x, double y, double rad, double cov_trans, double cov_rad) {
+  //パーティクルの初期配置
+  ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
+  prior_Mu(1) = x;
+  prior_Mu(2) = y;
+  // prior_Mu(1) = mapPoint.point.x;
+  // prior_Mu(2) = mapPoint.point.y;
+  prior_Mu(3) = rad;  //角度
+  prior_Mu(4) = 0.0;  //左車輪定常ノイズ
+  prior_Mu(5) = 0.0;  //右車輪定常ノイズ
+  SymmetricMatrix prior_Cov(STATE_SIZE);
+  prior_Cov = 0.0;
+  prior_Cov(1, 1) = cov_trans;
+  prior_Cov(2, 2) = cov_trans;
+  // prior_Cov(3, 3) = pow(10000000.0 * M_PI / 180.0, 2);
+  prior_Cov(3, 3) = cov_rad;
+  // 初期配置で利用する分布
+  Gaussian prior_cont(prior_Mu, prior_Cov);
+
+  // Discrete prior for Particle filter (using the continuous Gaussian prior)
+  const int NUM_SAMPLES = 200;
+  // 初期分布が離散化されたパーティクルを取得
+  vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
+  prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
+  MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
+  prior_discr.ListOfSamplesSet(prior_samples);
+  if (is_got_initial_pose) {
+    // 古いパーティクル分布を消す
+    delete g_filter;
+  }
+  // パーティクルフィルタを生成
+  // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
+  g_filter = new CustomParticleFilter(&prior_discr, 0.0, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
+  is_got_initial_pose = true;
+}
 
 /**
  * @brief PFで推定した姿勢を発行
@@ -276,7 +318,8 @@ void PublishParticles() {
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
   vector<WeightedSample<ColumnVector> > samples;
 
-  samples = g_filter->getNewSamples();
+  samples = g_filter->getNewSamples();nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+      "initialpose", 10, initialPose
   for (sample_it = samples.begin(); sample_it < samples.end(); sample_it++) {
     geometry_msgs::Pose pose;
     ColumnVector sample = (*sample_it).ValueGet();
@@ -301,7 +344,8 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   /// LRFから初期位置が観測されるまで待つ
   if (!is_got_initial_pose) {
     return;
-  }
+  }nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+      "initialpose", 10, initialPose
 
   ///! オドメトリの周期を計算
   static ros::Time prevNavDataTime;
@@ -363,41 +407,9 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   }
 
   if (!is_got_initial_pose) {
-    //パーティクルの初期配置
-    ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
-    prior_Mu(1) = mapPoint.point.x;
-    prior_Mu(2) = mapPoint.point.y;
-    prior_Mu(3) = 0.0;  //角度
-    prior_Mu(4) = 0.0;  //左車輪定常ノイズ
-    prior_Mu(5) = 0.0;  //右車輪定常ノイズ
-    SymmetricMatrix prior_Cov(STATE_SIZE);
-    prior_Cov = 0.0;
-    // prior_Cov(1, 1) = pow(0.3, 2);
-    prior_Cov(1, 1) = pow(0.1, 2);
-    prior_Cov(1, 2) = 0.0;
-    prior_Cov(1, 3) = 0.0;
-    prior_Cov(2, 1) = 0.0;
-    // prior_Cov(2, 2) = pow(0.3, 2);
-    prior_Cov(2, 2) = pow(0.1, 2);
-    prior_Cov(2, 3) = 0.0;
-    prior_Cov(3, 1) = 0.0;
-    prior_Cov(3, 2) = 0.0;
-    prior_Cov(3, 3) = pow(10000000.0 * M_PI / 180.0, 2);
-    // 初期配置で利用する分布
-    Gaussian prior_cont(prior_Mu, prior_Cov);
+    GenInitialParticles(mapPoint.point.x, mapPoint.point.y, 0.0, pow(0.1, 2),
+                        pow(10000000.0 * M_PI / 180.0, 2));
 
-    // Discrete prior for Particle filter (using the continuous Gaussian prior)
-    const int NUM_SAMPLES = 200;
-    // 初期分布が離散化されたパーティクルを取得
-    vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
-    prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
-    MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
-    prior_discr.ListOfSamplesSet(prior_samples);
-    // パーティクルフィルタを生成
-    // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
-    g_filter =
-        new CustomParticleFilter(&prior_discr, 0.0, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
-    is_got_initial_pose = true;
     return;
   }
 
@@ -428,6 +440,33 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   g_meas_model->MeasurementPdfSet(&meas_pdf);
 
   g_filter->Update(g_meas_model, measurement);
+  PublishPose();
+  PublishParticles();
+}
+
+/**
+ * @brief パーティクル配置の手動生成
+ */
+void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& arg) {
+  // geometry_msgs::PointStamped mapPoint;
+  geometry_msgs::PoseStamped mapPose;
+  try {
+    geometry_msgs::TransformStamped mapSframeTransMsg;
+    mapSframeTransMsg = tfBuffer_.lookupTransform(
+        "map", arg->header.frame_id, /*ros::Time(0)*/ arg->header.stamp /*ros::Time()*/,
+        ros::Duration(3.0));
+    geometry_msgs::PoseStamped tmp;
+    tmp.pose = arg->pose.pose;
+    tmp.header = arg->header;
+    tf2::doTransform(tmp, mapPose, mapSframeTransMsg);
+  } catch (tf2::TransformException& ex) {
+    ROS_WARN("Could NOT transform : %s", ex.what());
+    return;
+  }
+  double rad = tf::getYaw(arg->pose.pose.orientation);
+  GenInitialParticles(mapPose.pose.position.x, mapPose.pose.position.y, rad,
+                      arg->pose.covariance.at(0), arg->pose.covariance.at(35));
+  ///! 推定姿勢発行
   PublishPose();
   PublishParticles();
 }
@@ -517,6 +556,8 @@ int main(int argc, char** argv) {
   ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
   ros::Subscriber pf_update_sub =
       nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
+  ros::Subscriber initialpose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+      "initialpose", 10, initialPoseReceived);
   // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);
   // ros::Subscriber pf_update_sub =
   //     nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, PushObserve);
