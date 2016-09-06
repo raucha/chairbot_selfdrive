@@ -1,7 +1,8 @@
 # max_obstacle_height: 0.60  # assume something like an arm is mounted on top of the robot
 
 # Obstacle Cost Shaping (http://wiki.ros.org/costmap_2d/hydro/inflation)
-footprint: [[-0.3,-0.3], [0.95,-0.3], [0.95,0.3], [-0.3,0.3]]  # if the robot is not circular
+footprint: [[-0.7,-0.7], [0.95,-0.7], [0.95,0.7], [-0.7,0.7]]  # if the robot is not circular
+# footprint: [[-0.3,-0.3], [0.95,-0.3], [0.95,0.3], [-0.3,0.3]]  # if the robot is not circular
 
 map_type: voxel
 
@@ -21,7 +22,7 @@ obstacle_layer:
   z_resolution: 0.2             # 各ボクセルの高さ
   z_voxels: 2                   # ボクセルを縦に積む個数，これだと40cm・・・？
   publish_voxel_map: false
-  observation_sources:  scan scan1 scan2 scan3 scan4 scan5 scan6 scan7 scan8 scan9 scan10 
+  observation_sources:  scan scan1 scan2 scan3 scan4 scan5 scan6 scan7 scan8 scan9 scan10
   scan:
     data_type: LaserScan
     topic: scan

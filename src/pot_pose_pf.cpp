@@ -368,10 +368,12 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   mu(1) = 0.0;
   mu(2) = 0.0;
   SymmetricMatrix cov(INPUT_SIZE);
-  cov(1, 1) = pow(0.1, 2);
+  cov(1, 1) = pow(0.2, 2);
+  // cov(1, 1) = pow(0.1, 2);
   cov(1, 2) = 0.0;
   cov(2, 1) = 0.0;
-  cov(2, 2) = pow(0.1, 2);
+  cov(2, 2) = pow(0.2, 2);
+  // cov(2, 2) = pow(0.1, 2);
   Gaussian gaus_noise(mu, cov);
   NonlinearSystemPdf sys_pdf(gaus_noise);
   g_sys_model->SystemPdfSet(&sys_pdf);
