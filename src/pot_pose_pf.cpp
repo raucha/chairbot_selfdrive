@@ -165,8 +165,7 @@ class NonlinearMeasurementPdf
 ////////////////////////
 using namespace BFL;
 
-class CustomParticleFilternh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
-      "initialpose", 10, initialPose
+class CustomParticleFilter
     : public BootstrapFilter<MatrixWrapper::ColumnVector, MatrixWrapper::ColumnVector> {
  public:
   CustomParticleFilter(MCPdf<MatrixWrapper::ColumnVector>* prior, int resampleperiod = 0,
@@ -318,8 +317,7 @@ void PublishParticles() {
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
   vector<WeightedSample<ColumnVector> > samples;
 
-  samples = g_filter->getNewSamples();nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
-      "initialpose", 10, initialPose
+  samples = g_filter->getNewSamples();
   for (sample_it = samples.begin(); sample_it < samples.end(); sample_it++) {
     geometry_msgs::Pose pose;
     ColumnVector sample = (*sample_it).ValueGet();
@@ -344,8 +342,7 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   /// LRFから初期位置が観測されるまで待つ
   if (!is_got_initial_pose) {
     return;
-  }nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
-      "initialpose", 10, initialPose
+  }
 
   ///! オドメトリの周期を計算
   static ros::Time prevNavDataTime;
