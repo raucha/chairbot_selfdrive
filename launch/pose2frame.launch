@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="chairbot_selfdrive" type="pose2frame" args="pose:=ndt_pose" name="pose2frame"/>
+  <node pkg="chairbot_selfdrive" type="pose2frame" args="pose:=ndt_pose _mode_2d:=true" name="pose2frame_2d"/>
+</launch>
