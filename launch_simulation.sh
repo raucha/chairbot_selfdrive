@@ -12,5 +12,4 @@ rviz -d `rospack find chairbot_selfdrive`/config/ndt_macher.rviz&
 rosbag play ~/Downloads/coi玄関-看板前.bag /mimamorukun/odom:=/odom /fix:=/navsat/fix --clock -l
 roslaunch chairbot_selfdrive sim.launch
 roslaunch ndt_localizer velodyne_matcher.launch
-rosrun chairbot_selfdrive pose2frame pose:=ndt_pose _mode_2d:=true
-rosrun chairbot_selfdrive pose2frame pose:=ndt_pose
+rosrun chairbot_selfdrive pose2frame.launch

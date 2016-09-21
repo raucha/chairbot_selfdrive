@@ -21,7 +21,7 @@ obstacle_layer:
   z_resolution: 0.2             # 各ボクセルの高さ
   z_voxels: 2                   # ボクセルを縦に積む個数，これだと40cm・・・？
   publish_voxel_map: false
-  observation_sources:  scan scan1 scan2 scan3 scan4 scan5 scan6 scan7 scan8 scan9 scan10 
+  observation_sources:  scan scan1 scan2 scan3 scan4 scan5 scan6 scan7 scan8 scan9 scan10
   scan:
     data_type: LaserScan
     topic: scan
