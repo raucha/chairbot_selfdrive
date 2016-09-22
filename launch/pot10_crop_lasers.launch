@@ -8,7 +8,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot2_scan_crop" output="screen">
     <remap from="scan_in" to="/portable2/scan" />
@@ -17,7 +17,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot3_scan_crop" output="screen">
     <remap from="scan_in" to="/portable3/scan" />
@@ -26,7 +26,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot4_scan_crop" output="screen">
     <remap from="scan_in" to="/portable4/scan" />
@@ -35,7 +35,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot5_scan_crop" output="screen">
     <remap from="scan_in" to="/portable5/scan" />
@@ -44,7 +44,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot6_scan_crop" output="screen">
     <remap from="scan_in" to="/portable6/scan" />
@@ -53,7 +53,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot7_scan_crop" output="screen">
     <remap from="scan_in" to="/portable7/scan" />
@@ -62,7 +62,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot8_scan_crop" output="screen">
     <remap from="scan_in" to="/portable8/scan" />
@@ -71,7 +71,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot9_scan_crop" output="screen">
     <remap from="scan_in" to="/portable9/scan" />
@@ -80,7 +80,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   <node pkg="raucha_utils" type="laser_crop_rect" name="pot10_scan_crop" output="screen">
     <remap from="scan_in" to="/portable10/scan" />
@@ -89,7 +89,7 @@
     <param name="xmax" value="1.5" />
     <param name="ymin" value="-0.8" />
     <param name="ymax" value="0.8" />
-    <param name="frame_id" value="base_footprint" />
+    <param name="frame_id" value="base_footprint_2d" />
   </node>
   </group>
 </launch>
