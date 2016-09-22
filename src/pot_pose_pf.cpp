@@ -460,7 +460,7 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
     ROS_WARN("Could NOT transform : %s", ex.what());
     return;
   }
-  double rad = tf::getYaw(arg->pose.pose.orientation);
+  double rad = tf::getYaw(mapPose.pose.orientation);
   GenInitialParticles(mapPose.pose.position.x, mapPose.pose.position.y, rad,
                       arg->pose.covariance.at(0), arg->pose.covariance.at(35));
   ///! 推定姿勢発行
@@ -552,7 +552,7 @@ int main(int argc, char** argv) {
   particle_pub = nh.advertise<geometry_msgs::PoseArray>("pf_particles", 5);
   ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, pf_predict);
   ros::Subscriber pf_update_sub =
-      nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, pf_update);
+      nh.subscribe<geometry_msgs::PointStamped>("observation_point", 10, pf_update);
   ros::Subscriber initialpose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
       "initialpose", 10, initialPoseReceived);
   // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);

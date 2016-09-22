@@ -164,6 +164,10 @@ add_executable(pose2frame src/pose2frame.cpp)
 add_dependencies(pose2frame ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(pose2frame ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
+add_executable(vicon2pose src/vicon2pose.cpp)
+add_dependencies(vicon2pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(vicon2pose ${catkin_LIBRARIES} ${BFL_LIBRARIES})
+
 ## Declare a C++ library
 # add_library(chairbot_selfdrive
 #   src/${PROJECT_NAME}/chairbot_selfdrive.cpp
