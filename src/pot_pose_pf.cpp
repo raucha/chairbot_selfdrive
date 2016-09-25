@@ -51,6 +51,10 @@ class NonlinearSystemPdf
     //! trans: [移動距離, 角度変化], オドメトリの生データ
     ColumnVector input = ConditionalArgumentGet(1);
 
+    const char ODOM_MODE = 2;
+    const char TRANS_MODE = 7;
+    // ROS_INFO_STREAM("rows:"<<input.rows());
+
     // sample from additive noise
     ///! noise: [左車輪白色ノイズ, 右車輪白色ノイズ],
     ///平均値0標準偏差10のガウス分布に従う乱数から値を獲得
@@ -89,8 +93,8 @@ class NonlinearSystemPdf
     const float vel = (Vl + Vr) / 2.0;
     const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
     // ROS_INFO_STREAM("scale_err_l:" << scale_err_l);
-    ROS_DEBUG_STREAM("vel_odom:" << vel_odom << "  err_l:" << err_l << "  Vl:" << Vl
-                                 << "  vel:" << vel);
+    // ROS_DEBUG_STREAM("vel_odom:" << vel_odom << "  err_l:" << err_l << "  Vl:" << Vl
+    //                              << "  vel:" << vel);
 
     ///! パーティクルの状態変数を更新
     state(1) += cos(state(3)) * vel;
@@ -187,12 +191,13 @@ using namespace MatrixWrapper;
 using namespace std;
 
 // const int STATE_SIZE = 3;
-const int STATE_SIZE = 5;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
+// const int STATE_SIZE = 5;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
+const int STATE_SIZE = 10;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
 const int INPUT_SIZE = 2;
 const int MEAS_SIZE = 2;
 
-SystemModel<ColumnVector>* g_sys_model;
-MeasurementModel<ColumnVector, ColumnVector>* g_meas_model;
+// SystemModel<ColumnVector>* g_sys_model;
+// MeasurementModel<ColumnVector, ColumnVector>* g_meas_model;
 CustomParticleFilter* g_filter;
 
 ros::Publisher pub_filtered;
@@ -251,11 +256,12 @@ void PublishPose() {
   if (!is_got_initial_pose) {
     return;
   }
-  Pdf<ColumnVector>* posterior = g_filter->PostGet();
+  Pdf<ColumnVector>* posterior = g_filter->PostGet(); // 座標計算用
+  vector<WeightedSample<ColumnVector> > samples = g_filter->getNewSamples();                // 角度計用
   ColumnVector pose = posterior->ExpectedValueGet();
   SymmetricMatrix pose_cov = posterior->CovarianceGet();
 
-  ROS_INFO_STREAM("Err_l:" << pose(4) << " Err_r:" << pose(5));
+  // ROS_INFO_STREAM("Err_l:" << pose(4) << " Err_r:" << pose(5));
 
   nav_msgs::Odometry pose_msg;
   pose_msg.header.stamp = g_latest_header.stamp;
@@ -266,8 +272,6 @@ void PublishPose() {
 
   // パーティクルの重み付き平均算出(ベクトル利用)
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
-  vector<WeightedSample<ColumnVector> > samples;
-  samples = g_filter->getNewSamples();
   double ang_x = 0.0;
   double ang_y = 0.0;
   for (sample_it = samples.begin(); sample_it < samples.end(); sample_it++) {
@@ -374,10 +378,11 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   cov(2, 2) = pow(0.1, 2);
   Gaussian gaus_noise(mu, cov);
   NonlinearSystemPdf sys_pdf(gaus_noise);
-  g_sys_model->SystemPdfSet(&sys_pdf);
+  SystemModel<ColumnVector> sys_model(&sys_pdf);
+  // g_sys_model->SystemPdfSet(&sys_pdf);
 
   ///! パーティクルフィルタを更新
-  g_filter->Update(g_sys_model, input);
+  g_filter->Update(&sys_model, input);
 
   ///! 推定姿勢発行
   PublishPose();
@@ -434,9 +439,9 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
   cov(2, 2) = 1.0;  // Var[y,y]
   Gaussian gaus_noise(mu, cov);
   NonlinearMeasurementPdf meas_pdf(gaus_noise);
-  g_meas_model->MeasurementPdfSet(&meas_pdf);
+  MeasurementModel<ColumnVector, ColumnVector> meas_model(&meas_pdf);
 
-  g_filter->Update(g_meas_model, measurement);
+  g_filter->Update(&meas_model, measurement);
   PublishPose();
   PublishParticles();
 }
@@ -445,6 +450,7 @@ void pf_update(const geometry_msgs::PointStamped::ConstPtr& arg) {
  * @brief パーティクル配置の手動生成
  */
 void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& arg) {
+  ROS_INFO("got initila pose");
   // geometry_msgs::PointStamped mapPoint;
   geometry_msgs::PoseStamped mapPose;
   try {
@@ -463,6 +469,33 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
   double rad = tf::getYaw(mapPose.pose.orientation);
   GenInitialParticles(mapPose.pose.position.x, mapPose.pose.position.y, rad,
                       arg->pose.covariance.at(0), arg->pose.covariance.at(35));
+  ///! 推定姿勢発行
+  PublishPose();
+  PublishParticles();
+}
+
+void transCallback(const geometry_msgs::TransformStamped::ConstPtr& arg) {
+  const char TRANS_SIZE = 7;
+  ///! 移動距離，変化角度計算
+  ColumnVector input(TRANS_SIZE);  // [x, y, z,  x, y, z, w]
+  input(1) = arg->transform.translation.x;
+  input(2) = arg->transform.translation.y;
+  input(3) = arg->transform.translation.z;
+  input(4) = arg->transform.rotation.x;
+  input(5) = arg->transform.rotation.y;
+  input(6) = arg->transform.rotation.z;
+  input(7) = arg->transform.rotation.w;
+  ColumnVector mu(TRANS_SIZE);
+  mu = 0.0;
+  SymmetricMatrix cov(TRANS_SIZE);
+  cov = 0.00000000000000001;
+  Gaussian gaus_noise(mu, cov);
+  NonlinearSystemPdf sys_pdf(gaus_noise);
+  SystemModel<ColumnVector> sys_model(&sys_pdf);
+
+  ///! パーティクルフィルタを更新
+  g_filter->Update(&sys_model, input);
+
   ///! 推定姿勢発行
   PublishPose();
   PublishParticles();
@@ -493,41 +526,12 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
 int main(int argc, char** argv) {
   cout << "Hello World" << endl;
 
-  Gaussian useless_sys_noise(INPUT_SIZE);
+  // Gaussian useless_sys_noise(INPUT_SIZE);
   // Gaussian useless_sys_noise(STATE_SIZE);
 
   Gaussian useless_meas_noise(MEAS_SIZE);
   NonlinearMeasurementPdf meas_pdf(useless_meas_noise);
   MeasurementModel<ColumnVector, ColumnVector> meas_model(&meas_pdf);
-
-  /****************************
- * Linear prior DENSITY     *
- ***************************/
-  // //パーティクルの初期配置
-  // ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
-  // prior_Mu(1) = 0.0;
-  // prior_Mu(2) = 0.0;
-  // prior_Mu(3) = 0.0;
-  // SymmetricMatrix prior_Cov(STATE_SIZE);
-  // prior_Cov(1, 1) = pow(5.0, 2);
-  // prior_Cov(1, 2) = 0.0;
-  // prior_Cov(1, 3) = 0.0;
-  // prior_Cov(2, 1) = 0.0;
-  // prior_Cov(2, 2) = pow(5.0, 2);
-  // prior_Cov(2, 3) = 0.0;
-  // prior_Cov(3, 1) = 0.0;
-  // prior_Cov(3, 2) = 0.0;
-  // prior_Cov(3, 3) = pow(30.0 * M_PI / 180.0, 2);
-  // // 初期配置で利用する分布
-  // Gaussian prior_cont(prior_Mu, prior_Cov);
-
-  // // Discrete prior for Particle filter (using the continuous Gaussian prior)
-  // const int NUM_SAMPLES = 2000;
-  // // 初期分布が離散化されたパーティクルを取得
-  // vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
-  // prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
-  // MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
-  // prior_discr.ListOfSamplesSet(prior_samples);
 
   /******************************
    * Construction of the Filter *
@@ -535,10 +539,10 @@ int main(int argc, char** argv) {
   // MULTINOMIAL_RSでしか動作しない．
   // CustomParticleFilter filter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
   // g_filter = &filter;
-  NonlinearSystemPdf sys_pdf(useless_sys_noise);
-  SystemModel<ColumnVector> sys_model(&sys_pdf);
-  g_sys_model = &sys_model;
-  g_meas_model = &meas_model;
+  // NonlinearSystemPdf sys_pdf(useless_sys_noise);
+  // SystemModel<ColumnVector> sys_model(&sys_pdf);
+  // g_sys_model = &sys_model;
+  // g_meas_model = &meas_model;
 
   ROS_INFO("Hello World!");
   ros::init(argc, argv, "bfl_pf");
@@ -555,6 +559,7 @@ int main(int argc, char** argv) {
       nh.subscribe<geometry_msgs::PointStamped>("observation_point", 10, pf_update);
   ros::Subscriber initialpose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
       "initialpose", 10, initialPoseReceived);
+  ros::Subscriber trans_sub = nh.subscribe<geometry_msgs::TransformStamped>("tran", 10, transCallback);
   // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);
   // ros::Subscriber pf_update_sub =
   //     nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, PushObserve);
