@@ -168,7 +168,7 @@ add_executable(vicon2pose src/vicon2pose.cpp)
 add_dependencies(vicon2pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(vicon2pose ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
-add_executable(velodyne_matcher nodes/ndt_matching/velodyne_matcher.cpp)
+add_executable(velodyne_matcher src/velodyne_matcher.cpp)
 target_link_libraries(velodyne_matcher ${catkin_LIBRARIES})
 
 ## Declare a C++ library

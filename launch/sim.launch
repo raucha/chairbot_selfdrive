@@ -1,13 +1,12 @@
 <launch>
-  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint base_link" name="tf_baselink"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint velodyne" name="tf_velodyne"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint gps_link" name="tf_gps"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 pcd_map map" name="tf_map"/>
-  <node pkg="tf2_ros" type="static_transform_publisher" args="613897.950396 3718166.67003 0 0 0 0 utm pcd_map" name="tf_utm"/>
-  <!-- <node pkg="pcl_ros" type="pcd_to_pointcloud" args="$(find chairbot_selfdrive)/pcd/toshokanmae.pcd 1 _frame_id:=/map" name="pub_map"/> -->
-  <node pkg="pcl_ros" type="pcd_to_pointcloud" args="$(find chairbot_selfdrive)/resources/coi_10cm.pcd 1 _frame_id:=/pcd_map" name="pub_map"/>
-  <node pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_outdoor.yaml _frame_id:=/pcd_map" name="pub_gridmap"/>
-  <!--<node pkg="pcl_ros" type="pcd_to_pointcloud" args="$(find chairbot_selfdrive)/resources/toshokanmae_trans.pcd 0 _frame_id:=/map" name="pub_map"/>-->
-  <!-- $ roslaunch chairbot_selfdrive ekf_relative.launch -->
-  <!-- $ roslaunch chairbot_selfdrive ekf_absolute.launch -->
+  <group ns="mimamorukun">
+    <!--static transform-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
+    <!--点群マップ，グリッドマップ-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/env_outdoor.launch.xml" />
+    <!--自己位置推定-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/localization.launch.xml">
+      <arg name="is_real" value="false" />
+    </include>
+  </group>
 </launch>

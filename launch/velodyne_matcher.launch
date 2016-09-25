@@ -2,8 +2,8 @@
 <launch>
   <node pkg="topic_tools" type="throttle" args="messages velodyne_points 5" name="velo_throttle"/>
 
-  <node pkg="ndt_localizer" type="velodyne_matcher" name="velodyne_matcher">
-  <!--<node pkg="ndt_localizer" type="velodyne_matcher" name="velodyne_matcher" output="screen">-->
+  <!--<node pkg="chairbot_selfdrive" type="velodyne_matcher" name="velodyne_matcher">-->
+  <node pkg="chairbot_selfdrive" type="velodyne_matcher" name="velodyne_matcher" output="screen">
   <!--<node pkg="ndt_localizer" type="velodyne_matcher" name="velodyne_matcher" output="screen" launch-prefix="terminator -x gdb ">-->
     <remap from="points_raw" to="velodyne_points_throttle" />
     <remap from="points_map" to="cloud_pcd" />
