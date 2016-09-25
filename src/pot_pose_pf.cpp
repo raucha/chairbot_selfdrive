@@ -1,3 +1,7 @@
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Dense>
+
 #include <bfl/filter/bootstrapfilter.h>
 #include <bfl/model/systemmodel.h>
 #include <bfl/model/measurementmodel.h>
@@ -14,6 +18,7 @@
 #include <tf/tf.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2/utils.h>
 
 const float WHEEL_RAD = 0.27;
 
@@ -46,7 +51,7 @@ class NonlinearSystemPdf
  */  // implement this virtual function for system model of a particle filter
   virtual bool SampleFrom(Sample<MatrixWrapper::ColumnVector>& one_sample, int method = DEFAULT,
                           void* args = NULL) const {
-    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ], パーティクルの状態変数
+    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ, z,  x, y, z, w], パーティクルの状態変数
     ColumnVector state = ConditionalArgumentGet(0);
     //! trans: [移動距離, 角度変化], オドメトリの生データ
     ColumnVector input = ConditionalArgumentGet(1);
@@ -92,25 +97,46 @@ class NonlinearSystemPdf
     // 移動距離，変化角度
     const float vel = (Vl + Vr) / 2.0;
     const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
-    // ROS_INFO_STREAM("scale_err_l:" << scale_err_l);
-    // ROS_DEBUG_STREAM("vel_odom:" << vel_odom << "  err_l:" << err_l << "  Vl:" << Vl
-    //                              << "  vel:" << vel);
 
     ///! パーティクルの状態変数を更新
-    state(1) += cos(state(3)) * vel;
-    state(2) += sin(state(3)) * vel;
-    state(3) += omega;
+    tf2::Transform currentTrans, diffTrans;
+    // 現在座標の型変換
+    currentTrans.getOrigin().setX(state(1));
+    currentTrans.getOrigin().setY(state(2));
+    currentTrans.getOrigin().setZ(state(6));
+    tf2::Quaternion quat(state(7), state(8), state(9), state(10));
+    currentTrans.setRotation(quat.normalize());
+    // オドメトリによる変移の型変換
+    diffTrans.getOrigin().setX(vel);
+    quat.setRPY(0, 0, omega);
+    diffTrans.setRotation(quat.normalize());
+    // 遷移後の姿勢を計算
+    currentTrans = currentTrans*diffTrans;
+    currentTrans.setRotation(currentTrans.getRotation().normalize());
+    geometry_msgs::Transform currentTransMsg = tf2::toMsg(currentTrans);
+
+    // 状態変数に保存
+    state(1) = currentTransMsg.translation.x;
+    state(2) = currentTransMsg.translation.y;
+    state(6) = currentTransMsg.translation.z;
+    state(7) = currentTransMsg.rotation.x;
+    state(8) = currentTransMsg.rotation.y;
+    state(9) = currentTransMsg.rotation.z;
+    state(10) = currentTransMsg.rotation.w;
+    // state(1) = currentTrans.getOrigin().getX();
+    // state(2) = currentTrans.getOrigin().getY();
+    // state(6) = currentTrans.getOrigin().getZ();
+    // state(7) = currentTrans.getRotation().getAxis().getX();
+    // state(8) = currentTrans.getRotation().getAxis().getY();
+    // state(9) = currentTrans.getRotation().getAxis().getZ();
+    // state(10) = currentTrans.getRotation().getW();
+
+    state(3) = tf2::getYaw(currentTrans.getRotation());
+    // state(1) += cos(state(3)) * vel;
+    // state(2) += sin(state(3)) * vel;
+    // state(3) += omega;
     state(4) = scale_err_l;
     state(5) = scale_err_r;
-    // 白色ノイズにLRFを掛けて定常ノイズとして利用
-    // state(4) = state(4) * 0.95 + err_l * 0.05;
-    // state(5) = state(5) * 0.95 + err_r * 0.05;
-
-    //// 白色ノイズの平均値を取って定常ノイズとして利用
-    // static int num = 0;
-    // num++;
-    // state(4) += (err_l-state(4))/(double)num;
-    // state(5) += (err_r-state(5))/(double)num;
 
     // パーティクルの新しい状態を返す
     one_sample.ValueSet(state);
@@ -190,6 +216,7 @@ using namespace MatrixWrapper;
 // using namespace BFL;
 using namespace std;
 
+  const int NUM_SAMPLES = 200;
 // const int STATE_SIZE = 3;
 // const int STATE_SIZE = 5;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
 const int STATE_SIZE = 10;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
@@ -208,6 +235,7 @@ tf2_ros::Buffer tfBuffer_;
 tf2_ros::TransformListener* tfListener_;
 std::vector<geometry_msgs::PointStamped> observeBuffer;
 std::vector<nav_msgs::Odometry> odomBuffer;
+tf2::Transform lastCenterPose;
 
 /**
  * @brief パーティクルフィルタのパーティクル群を生成
@@ -215,25 +243,30 @@ std::vector<nav_msgs::Odometry> odomBuffer;
  */
 void GenInitialParticles(double x, double y, double rad, double cov_trans, double cov_rad) {
   //パーティクルの初期配置
-  ColumnVector prior_Mu(STATE_SIZE);  // [x, y, theta]
+  ColumnVector prior_Mu(STATE_SIZE);  // [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
   prior_Mu(1) = x;
   prior_Mu(2) = y;
-  // prior_Mu(1) = mapPoint.point.x;
-  // prior_Mu(2) = mapPoint.point.y;
   prior_Mu(3) = rad;  //角度
   prior_Mu(4) = 0.0;  //左車輪定常ノイズ
   prior_Mu(5) = 0.0;  //右車輪定常ノイズ
+  prior_Mu(6) = 0.0;  //z
+  tf2::Quaternion quat;
+  quat.setRPY(0,0,rad);
+  quat = quat.normalize();
+  geometry_msgs::Quaternion quatMsg = tf2::toMsg(quat);
+  prior_Mu(7) = quatMsg.x;  //quat x
+  prior_Mu(8) = quatMsg.y;  //quat y
+  prior_Mu(9) = quatMsg.z;  //quat z
+  prior_Mu(10) = quatMsg.w;           //quat w
   SymmetricMatrix prior_Cov(STATE_SIZE);
   prior_Cov = 0.0;
   prior_Cov(1, 1) = cov_trans;
   prior_Cov(2, 2) = cov_trans;
-  // prior_Cov(3, 3) = pow(10000000.0 * M_PI / 180.0, 2);
   prior_Cov(3, 3) = cov_rad;
   // 初期配置で利用する分布
   Gaussian prior_cont(prior_Mu, prior_Cov);
 
   // Discrete prior for Particle filter (using the continuous Gaussian prior)
-  const int NUM_SAMPLES = 200;
   // 初期分布が離散化されたパーティクルを取得
   vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
   prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
@@ -270,41 +303,33 @@ void PublishPose() {
   pose_msg.pose.pose.position.x = pose(1);
   pose_msg.pose.pose.position.y = pose(2);
 
-  // パーティクルの重み付き平均算出(ベクトル利用)
+  // 四元数の加重平均を取得
+  // 参考:http://stackoverflow.com/questions/12374087/average-of-multiple-quaternions
   vector<WeightedSample<ColumnVector> >::iterator sample_it;
-  double ang_x = 0.0;
-  double ang_y = 0.0;
+  Eigen::Matrix<double, 4, NUM_SAMPLES> quatMat;
+  int i = 0;
   for (sample_it = samples.begin(); sample_it < samples.end(); sample_it++) {
     ColumnVector sample = (*sample_it).ValueGet();
     double w = (*sample_it).WeightGet();
-    ang_x += cos(sample(3)) * w;
-    ang_y += sin(sample(3)) * w;
+    quatMat(0, i) = w * sample(7);
+    quatMat(1, i) = w * sample(8);
+    quatMat(2, i) = w * sample(9);
+    quatMat(3, i) = w * sample(10);
+    i++;
   }
-  double ang = atan2(ang_y, ang_x);
-  pose_msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(ang);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 4, 4> > es(quatMat*quatMat.transpose());
+  // cout << "The eigenvalues of A are:" << endl << es.eigenvalues() << endl;
+  // cout << "The matrix of eigenvectors, V, is:" << endl << es.eigenvectors() << endl << endl;
+  // 最後尾の最大固有ベクトルを利用
+  Eigen::Vector4d quatAve = es.eigenvectors().col(3);
 
-  // 車輪->base_footprintのぶんだけオフセットする
-  // @todo: 現在は反射板検出側でオフセットしているので不要な処理
-  // const float wheel2base = 0.3;
-  const float wheel2base = 0.0;
-  float tmp90 = 90.0 * M_PI / 180.0;
-  double ang2[] = {ang + tmp90, ang - tmp90};
-  geometry_msgs::Point p2[2];
-  for (int i = 0; i < 2; i++) {
-    p2[i].x = pose_msg.pose.pose.position.x + wheel2base * cos(ang2[i]);
-    p2[i].y = pose_msg.pose.pose.position.y + wheel2base * sin(ang2[i]);
-  }
-  float dist2[2];
-  for (int i = 0; i < 2; i++) {
-    dist2[i] = p2[i].x * p2[i].x + p2[i].y * p2[i].y;
-  }
-  if (dist2[0] > dist2[1]) {
-    pose_msg.pose.pose.position = p2[0];
-  } else {
-    pose_msg.pose.pose.position = p2[1];
-  }
+  pose_msg.pose.pose.orientation.x = quatAve(0);
+  pose_msg.pose.pose.orientation.y = quatAve(1);
+  pose_msg.pose.pose.orientation.z = quatAve(2);
+  pose_msg.pose.pose.orientation.w = quatAve(3);
 
   pub_filtered.publish(pose_msg);
+  tf2::fromMsg(pose_msg.pose.pose, lastCenterPose);
 }
 
 /**
@@ -325,11 +350,14 @@ void PublishParticles() {
   for (sample_it = samples.begin(); sample_it < samples.end(); sample_it++) {
     geometry_msgs::Pose pose;
     ColumnVector sample = (*sample_it).ValueGet();
-
     pose.position.x = sample(1);
     pose.position.y = sample(2);
-    pose.orientation = tf::createQuaternionMsgFromYaw(sample(3));
-
+    pose.position.z = sample(6);
+    pose.orientation.x = sample(7);
+    pose.orientation.y = sample(8);
+    pose.orientation.z = sample(9);
+    pose.orientation.w = sample(10);
+    // pose.orientation = tf::createQuaternionMsgFromYaw(sample(3));
     particles_msg.poses.insert(particles_msg.poses.begin(), pose);
   }
   particle_pub.publish(particles_msg);
@@ -382,6 +410,7 @@ void pf_predict(const nav_msgs::Odometry::ConstPtr& arg) {
   // g_sys_model->SystemPdfSet(&sys_pdf);
 
   ///! パーティクルフィルタを更新
+  // ROS_INFO("odom updating");
   g_filter->Update(&sys_model, input);
 
   ///! 推定姿勢発行
