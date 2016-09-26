@@ -30,9 +30,10 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &arg) {
   try {
     // "map"フレームでの姿勢を取得
     tf2::Transform mapSframeTrans;
-    tf2::fromMsg(tfBuffer_.lookupTransform("map", arg->header.frame_id,
-                                           /*ros::Time::now()*/ arg->header.stamp,
-                                           ros::Duration(3.0)).transform,
+    tf2::fromMsg(tfBuffer_
+                     .lookupTransform("map", arg->header.frame_id,
+                                      /*ros::Time::now()*/ arg->header.stamp, ros::Duration(3.0))
+                     .transform,
                  mapSframeTrans);
     mapPoseTrans = mapSframeTrans * sframePoseTrans;
     if (is_2d_mode) {

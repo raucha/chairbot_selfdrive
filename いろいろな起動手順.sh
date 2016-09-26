@@ -1,3 +1,8 @@
+# 屋外での移動のシミュレーション
+rosbag play ~/Downloads/coi玄関-看板前_gpslink.bag /velodyne_points:=/mimamorukun/velodyne_points --clock -l
+rviz -d `rospakc find chairbot_selfdrive`/config/outdoor.rivz.rviz /initialpose:=/mimamorukun/initialpose /move_base_simple/goal:=/mimamorukun/move_base_simple/goal
+roslaunch chairbot_selfdrive sim.launch
+
 # Viconを使ったmove_base
 ## viconのPCをpot_naviのNetGearのルータに繋いでおくこと
 roslaunch tms_rc_mimamorukun_control minimal_with_tf.launch

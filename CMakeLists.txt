@@ -35,10 +35,9 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
 )
 
-# SET(CMAKE_CXX_FLAGS "-std=c++11 -g -O0 ${CMAKE_CXX_FLAGS}")
-# SET(CMAKE_CXX_FLAGS "-std=c++11 -Og ${CMAKE_CXX_FLAGS}")
-SET(CMAKE_CXX_FLAGS "-std=c++03 -O3 ${CMAKE_CXX_FLAGS}")
-# SET(CMAKE_CXX_FLAGS "-std=c++03 -O0 ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-std=c++03 -O2 ${CMAKE_CXX_FLAGS}")
+# SET(CMAKE_CXX_FLAGS "-std=c++03 -O2 -g ${CMAKE_CXX_FLAGS}")
+# SET(CMAKE_CXX_FLAGS "-std=c++03 -O0 -g ${CMAKE_CXX_FLAGS}")
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 

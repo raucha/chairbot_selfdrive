@@ -21,6 +21,18 @@
 #include <tf2/utils.h>
 
 const float WHEEL_RAD = 0.27;
+tf2::Transform lastCenterPose;
+/**
+ * @brief 姿勢を表示
+ * @param arg 姿勢データ
+ */
+void printTrans(tf2::Transform arg) {
+  double roll, pitch, yaw;
+  tf2::getEulerYPR(arg.getRotation(), yaw, pitch, roll);
+  ROS_INFO_STREAM("x:" << arg.getOrigin().getX() << " y:" << arg.getOrigin().getY()
+                       << " z:" << arg.getOrigin().getZ() << " yaw:" << yaw * 180.0 / 3.14
+                       << " pitch:" << pitch * 180.0 / 3.14 << " roll:" << roll * 180.0 / 3.14);
+}
 
 //////////////////////
 //////////////////////
@@ -51,67 +63,96 @@ class NonlinearSystemPdf
  */  // implement this virtual function for system model of a particle filter
   virtual bool SampleFrom(Sample<MatrixWrapper::ColumnVector>& one_sample, int method = DEFAULT,
                           void* args = NULL) const {
-    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ, z,  x, y, z, w], パーティクルの状態変数
+    //! state: [x, y, rad, 左車輪定常ノイズ, 右車輪定常ノイズ, z,  x, y, z, w],
+    //パーティクルの状態変数
     ColumnVector state = ConditionalArgumentGet(0);
     //! trans: [移動距離, 角度変化], オドメトリの生データ
     ColumnVector input = ConditionalArgumentGet(1);
 
-    const char ODOM_MODE = 2;
-    const char TRANS_MODE = 7;
-    // ROS_INFO_STREAM("rows:"<<input.rows());
-
-    // sample from additive noise
-    ///! noise: [左車輪白色ノイズ, 右車輪白色ノイズ],
-    ///平均値0標準偏差10のガウス分布に従う乱数から値を獲得
-    Sample<ColumnVector> noise;
-    _additiveNoise.SampleFrom(noise, method, args);
-
-    // 左右車輪の滑りの白色ノイズ
-    const float err_l = noise.ValueGet()(1);
-    const float err_r = noise.ValueGet()(2);
-    // 左右車輪の直径スケールのノイズ
-    ColumnVector mu(2);
-    mu(1) = 0;
-    mu(2) = 0;
-    SymmetricMatrix cov(2);
-    cov(1, 1) = pow(0.001, 2);
-    cov(1, 2) = 0.0;
-    cov(2, 1) = 0.0;
-    cov(2, 2) = pow(0.001, 2);
-    Gaussian scale_gaus(mu, cov);
-    //! @todo:車輪半径の差は考慮するほどずれていないため無視
-    const float scale_err_l = 0.0;
-    const float scale_err_r = 0.0;
-    /*Sample<ColumnVector> scale_noise;
-    scale_gaus.SampleFrom(scale_noise, method);
-    const float scale_err_l = state(4) + scale_noise.ValueGet()(1);
-    const float scale_err_r = state(5) + scale_noise.ValueGet()(2);
-    if (0.5<fabs(scale_err_l)||0.5<fabs(scale_err_r)){
-      ROS_WARN_STREAM("scale_err_l:"<<scale_err_l<<"   scale_err_r:"<<scale_err_r);
-    }*/
-    // ノイズの乗った左右車輪速度
-    const float vel_odom = input(1);
-    const float omega_odom = input(2);
-    const float Vl = (vel_odom - omega_odom * WHEEL_RAD) * (1.0 + err_l + scale_err_l);
-    const float Vr = (vel_odom + omega_odom * WHEEL_RAD) * (1.0 + err_r + scale_err_r);
-    // 移動距離，変化角度
-    const float vel = (Vl + Vr) / 2.0;
-    const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
-
-    ///! パーティクルの状態変数を更新
-    tf2::Transform currentTrans, diffTrans;
     // 現在座標の型変換
+    tf2::Transform currentTrans;
     currentTrans.getOrigin().setX(state(1));
     currentTrans.getOrigin().setY(state(2));
     currentTrans.getOrigin().setZ(state(6));
     tf2::Quaternion quat(state(7), state(8), state(9), state(10));
     currentTrans.setRotation(quat.normalize());
-    // オドメトリによる変移の型変換
-    diffTrans.getOrigin().setX(vel);
-    quat.setRPY(0, 0, omega);
-    diffTrans.setRotation(quat.normalize());
-    // 遷移後の姿勢を計算
-    currentTrans = currentTrans*diffTrans;
+
+    const char ODOM_DIM = 2;
+    const char TRANS_DIM = 7;
+    // ROS_INFO_STREAM("rows:"<<input.rows());
+    if (ODOM_DIM == input.rows()) {
+      // sample from additive noise
+      ///! noise: [左車輪白色ノイズ, 右車輪白色ノイズ],
+      ///平均値0標準偏差10のガウス分布に従う乱数から値を獲得
+      Sample<ColumnVector> noise;
+      _additiveNoise.SampleFrom(noise, method, args);
+
+      // 左右車輪の滑りの白色ノイズ
+      const float err_l = noise.ValueGet()(1);
+      const float err_r = noise.ValueGet()(2);
+      // 左右車輪の直径スケールのノイズ
+      ColumnVector mu(2);
+      mu(1) = 0;
+      mu(2) = 0;
+      SymmetricMatrix cov(2);
+      cov(1, 1) = pow(0.001, 2);
+      cov(1, 2) = 0.0;
+      cov(2, 1) = 0.0;
+      cov(2, 2) = pow(0.001, 2);
+      Gaussian scale_gaus(mu, cov);
+      //! @todo:車輪半径の差は考慮するほどずれていないため無視
+      const float scale_err_l = 0.0;
+      const float scale_err_r = 0.0;
+      /*Sample<ColumnVector> scale_noise;
+      scale_gaus.SampleFrom(scale_noise, method);
+      const float scale_err_l = state(4) + scale_noise.ValueGet()(1);
+      const float scale_err_r = state(5) + scale_noise.ValueGet()(2);
+      if (0.5<fabs(scale_err_l)||0.5<fabs(scale_err_r)){
+        ROS_WARN_STREAM("scale_err_l:"<<scale_err_l<<"   scale_err_r:"<<scale_err_r);
+      }*/
+      // ノイズの乗った左右車輪速度
+      const float vel_odom = input(1);
+      const float omega_odom = input(2);
+      const float Vl = (vel_odom - omega_odom * WHEEL_RAD) * (1.0 + err_l + scale_err_l);
+      const float Vr = (vel_odom + omega_odom * WHEEL_RAD) * (1.0 + err_r + scale_err_r);
+      // 移動距離，変化角度
+      const float vel = (Vl + Vr) / 2.0;
+      const float omega = (Vr - Vl) / (2.0 * WHEEL_RAD);
+
+      ///! パーティクルの状態変数を更新
+      tf2::Transform diffTrans;
+      // オドメトリによる変移の型変換
+      diffTrans.getOrigin().setX(vel);
+      quat.setRPY(0, 0, omega);
+      diffTrans.setRotation(quat.normalize());
+      // 遷移後の姿勢を計算
+      currentTrans = currentTrans * diffTrans;
+      // state(4) = scale_err_l;
+      // state(5) = scale_err_r;
+    } else if (TRANS_DIM == input.rows()) {
+      // 重心からみた該当パーティクルの姿勢
+      tf2::Transform centParticleTrans = lastCenterPose.inverse() * currentTrans;
+      // 重心の姿勢変化
+      tf2::Transform centDiffTrans;
+      centDiffTrans.getOrigin().setX(input(1));
+      centDiffTrans.getOrigin().setY(input(2));
+      centDiffTrans.getOrigin().setZ(input(3));
+      tf2::Quaternion quat(input(4), input(5), input(6), input(7));
+      centDiffTrans.setRotation(quat.normalize());
+      // 重心との相対姿勢を保ったままパーティクルを移動
+      ROS_INFO("before:");
+      printTrans(currentTrans);
+      ROS_INFO("lastCenterPose:");
+      printTrans(lastCenterPose);
+      ROS_INFO("centParticleTrans:");
+      printTrans(centParticleTrans);
+      ROS_INFO("centDiffTrans:");
+      printTrans(centDiffTrans);
+      currentTrans = (lastCenterPose * centDiffTrans) * centParticleTrans;
+      ROS_INFO("after:");
+      printTrans(currentTrans);
+      ROS_INFO("a");
+    }
     currentTrans.setRotation(currentTrans.getRotation().normalize());
     geometry_msgs::Transform currentTransMsg = tf2::toMsg(currentTrans);
 
@@ -123,20 +164,8 @@ class NonlinearSystemPdf
     state(8) = currentTransMsg.rotation.y;
     state(9) = currentTransMsg.rotation.z;
     state(10) = currentTransMsg.rotation.w;
-    // state(1) = currentTrans.getOrigin().getX();
-    // state(2) = currentTrans.getOrigin().getY();
-    // state(6) = currentTrans.getOrigin().getZ();
-    // state(7) = currentTrans.getRotation().getAxis().getX();
-    // state(8) = currentTrans.getRotation().getAxis().getY();
-    // state(9) = currentTrans.getRotation().getAxis().getZ();
-    // state(10) = currentTrans.getRotation().getW();
 
     state(3) = tf2::getYaw(currentTrans.getRotation());
-    // state(1) += cos(state(3)) * vel;
-    // state(2) += sin(state(3)) * vel;
-    // state(3) += omega;
-    state(4) = scale_err_l;
-    state(5) = scale_err_r;
 
     // パーティクルの新しい状態を返す
     one_sample.ValueSet(state);
@@ -216,7 +245,7 @@ using namespace MatrixWrapper;
 // using namespace BFL;
 using namespace std;
 
-  const int NUM_SAMPLES = 200;
+const int NUM_SAMPLES = 200;
 // const int STATE_SIZE = 3;
 // const int STATE_SIZE = 5;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ]
 const int STATE_SIZE = 10;  //! [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
@@ -235,7 +264,6 @@ tf2_ros::Buffer tfBuffer_;
 tf2_ros::TransformListener* tfListener_;
 std::vector<geometry_msgs::PointStamped> observeBuffer;
 std::vector<nav_msgs::Odometry> odomBuffer;
-tf2::Transform lastCenterPose;
 
 /**
  * @brief パーティクルフィルタのパーティクル群を生成
@@ -243,21 +271,22 @@ tf2::Transform lastCenterPose;
  */
 void GenInitialParticles(double x, double y, double rad, double cov_trans, double cov_rad) {
   //パーティクルの初期配置
-  ColumnVector prior_Mu(STATE_SIZE);  // [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
+  ColumnVector prior_Mu(
+      STATE_SIZE);  // [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
   prior_Mu(1) = x;
   prior_Mu(2) = y;
   prior_Mu(3) = rad;  //角度
   prior_Mu(4) = 0.0;  //左車輪定常ノイズ
   prior_Mu(5) = 0.0;  //右車輪定常ノイズ
-  prior_Mu(6) = 0.0;  //z
+  prior_Mu(6) = 0.0;  // z
   tf2::Quaternion quat;
-  quat.setRPY(0,0,rad);
+  quat.setRPY(0, 0, rad);
   quat = quat.normalize();
   geometry_msgs::Quaternion quatMsg = tf2::toMsg(quat);
-  prior_Mu(7) = quatMsg.x;  //quat x
-  prior_Mu(8) = quatMsg.y;  //quat y
-  prior_Mu(9) = quatMsg.z;  //quat z
-  prior_Mu(10) = quatMsg.w;           //quat w
+  prior_Mu(7) = quatMsg.x;   // quat x
+  prior_Mu(8) = quatMsg.y;   // quat y
+  prior_Mu(9) = quatMsg.z;   // quat z
+  prior_Mu(10) = quatMsg.w;  // quat w
   SymmetricMatrix prior_Cov(STATE_SIZE);
   prior_Cov = 0.0;
   prior_Cov(1, 1) = cov_trans;
@@ -289,8 +318,8 @@ void PublishPose() {
   if (!is_got_initial_pose) {
     return;
   }
-  Pdf<ColumnVector>* posterior = g_filter->PostGet(); // 座標計算用
-  vector<WeightedSample<ColumnVector> > samples = g_filter->getNewSamples();                // 角度計用
+  Pdf<ColumnVector>* posterior = g_filter->PostGet();                         // 座標計算用
+  vector<WeightedSample<ColumnVector> > samples = g_filter->getNewSamples();  // 角度計用
   ColumnVector pose = posterior->ExpectedValueGet();
   SymmetricMatrix pose_cov = posterior->CovarianceGet();
 
@@ -302,6 +331,7 @@ void PublishPose() {
 
   pose_msg.pose.pose.position.x = pose(1);
   pose_msg.pose.pose.position.y = pose(2);
+  pose_msg.pose.pose.position.z = pose(6);
 
   // 四元数の加重平均を取得
   // 参考:http://stackoverflow.com/questions/12374087/average-of-multiple-quaternions
@@ -317,7 +347,7 @@ void PublishPose() {
     quatMat(3, i) = w * sample(10);
     i++;
   }
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 4, 4> > es(quatMat*quatMat.transpose());
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 4, 4> > es(quatMat * quatMat.transpose());
   // cout << "The eigenvalues of A are:" << endl << es.eigenvalues() << endl;
   // cout << "The matrix of eigenvectors, V, is:" << endl << es.eigenvectors() << endl << endl;
   // 最後尾の最大固有ベクトルを利用
@@ -504,6 +534,10 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
 }
 
 void transCallback(const geometry_msgs::TransformStamped::ConstPtr& arg) {
+  /// LRFから初期位置が観測されるまで待つ
+  if (!is_got_initial_pose) {
+    return;
+  }
   const char TRANS_SIZE = 7;
   ///! 移動距離，変化角度計算
   ColumnVector input(TRANS_SIZE);  // [x, y, z,  x, y, z, w]
@@ -588,7 +622,8 @@ int main(int argc, char** argv) {
       nh.subscribe<geometry_msgs::PointStamped>("observation_point", 10, pf_update);
   ros::Subscriber initialpose_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
       "initialpose", 10, initialPoseReceived);
-  ros::Subscriber trans_sub = nh.subscribe<geometry_msgs::TransformStamped>("tran", 10, transCallback);
+  ros::Subscriber trans_sub =
+      nh.subscribe<geometry_msgs::TransformStamped>("trans", 10, transCallback);
   // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);
   // ros::Subscriber pf_update_sub =
   //     nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, PushObserve);

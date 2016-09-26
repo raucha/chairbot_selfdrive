@@ -6,6 +6,9 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_listener.h>
@@ -32,11 +35,11 @@ static bool got_3dmap = false;
 static bool got_init_pose = false;
 
 static pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> ndt;
-static int iter = 30;             // NDTの最大再起回数
+static int iter = 30;  // NDTの最大再起回数
 // static float ndt_res = 0.4;    // ボクセル
-static float ndt_res = 1.0;       // Resolution
-static double step_size = 0.1;    // Step size
-static double trans_eps = 0.01;   // Transformation epsilon
+static float ndt_res = 1.0;      // Resolution
+static double step_size = 0.1;   // Step size
+static double trans_eps = 0.01;  // Transformation epsilon
 
 // Leaf size of VoxelGrid filter.
 // static double voxel_leaf_size = 0.4;
@@ -45,6 +48,9 @@ static double voxel_leaf_size = 2.0;
 static ros::Publisher ndt_pose_pub;
 static ros::Publisher time_ndt_matching_pub;
 static ros::Publisher filtered_scan_pub;
+static ros::Publisher trans_pub;
+static ros::Publisher converge_pub;
+static ros::Publisher score_pub;
 
 tf2_ros::Buffer tfBuffer_;
 tf2_ros::TransformListener *tfListener_;
@@ -53,16 +59,13 @@ tf2_ros::TransformListener *tfListener_;
  * @brief 姿勢を表示
  * @param arg 姿勢データ
  */
- void printTrans(tf2::Transform arg){
-    double roll, pitch, yaw;
-    tf2::getEulerYPR(arg.getRotation(), yaw,pitch,roll);
-    ROS_INFO_STREAM("x:" << arg.getOrigin().getX() <<
-                    " y:" << arg.getOrigin().getY() <<
-                    " z:" << arg.getOrigin().getZ() <<
-                    " yaw:" << yaw <<
-                    " pitch:" << pitch <<
-                    " roll:" << roll);
- }
+void printTrans(tf2::Transform arg) {
+  double roll, pitch, yaw;
+  tf2::getEulerYPR(arg.getRotation(), yaw, pitch, roll);
+  ROS_INFO_STREAM("x:" << arg.getOrigin().getX() << " y:" << arg.getOrigin().getY()
+                       << " z:" << arg.getOrigin().getZ() << " yaw:" << yaw << " pitch:" << pitch
+                       << " roll:" << roll);
+}
 
 /**
  * @brief 3次元地図を点群で購読，1回のみ
@@ -92,54 +95,54 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
  * @param input PoseWithCovarianceStamped, 初期推定位置分布
  */
 static void initialpose_callback(const nav_msgs::Odometry::ConstPtr &input) {
-  if(!got_3dmap){
+  if (!got_3dmap) {
     return;
   }
   ///! オドメトリの周期を計算
-  static ros::Time prevNavDataTime;
-  if (prevNavDataTime.isZero()) {
-    prevNavDataTime = input->header.stamp;
-    return;
-  }
-  double dt = (input->header.stamp - prevNavDataTime).toSec();
-  prevNavDataTime = input->header.stamp;
-  if(!got_init_pose){
-    // 初期姿勢設定
-    ROS_INFO("initialpose_callback");
-    ndt_pose.pose = input->pose.pose;
-    ndt_pose.header = input->header;
-    got_init_pose = true;
-  }else{
-    // 姿勢遷移
-    geometry_msgs::Twist vel = input->twist.twist;
-    tf2::Transform currentTrans, diffTrans;
-    tf2::fromMsg(ndt_pose.pose, currentTrans);
+  // static ros::Time prevNavDataTime;
+  // if (prevNavDataTime.isZero()) {
+  //   prevNavDataTime = input->header.stamp;
+  //   return;
+  // }
+  // double dt = (input->header.stamp - prevNavDataTime).toSec();
+  // prevNavDataTime = input->header.stamp;
+  // if(!got_init_pose){
+  // 初期姿勢設定
+  ROS_INFO("initialpose_callback");
+  ndt_pose.pose = input->pose.pose;
+  ndt_pose.header = input->header;
+  got_init_pose = true;
+  // }else{
+  //   // 姿勢遷移
+  //   geometry_msgs::Twist vel = input->twist.twist;
+  //   tf2::Transform currentTrans, diffTrans;
+  //   tf2::fromMsg(ndt_pose.pose, currentTrans);
 
-    // 並進速度
-    diffTrans.getOrigin().setX(vel.linear.x*dt);
-    // 角速度
-    tf2::Quaternion quat;
-    quat.setRPY(0,0,vel.angular.z*dt);
-    diffTrans.setRotation(quat.normalize());
+  //   // 並進速度
+  //   diffTrans.getOrigin().setX(vel.linear.x*dt);
+  //   // 角速度
+  //   tf2::Quaternion quat;
+  //   quat.setRPY(0,0,vel.angular.z*dt);
+  //   diffTrans.setRotation(quat.normalize());
 
-    // //変更前姿勢
-    // ROS_INFO("prevPose");
-    // printTrans(currentTrans);
+  //   // //変更前姿勢
+  //   // ROS_INFO("prevPose");
+  //   // printTrans(currentTrans);
 
-    // 予測姿勢を計算
-    currentTrans = currentTrans*diffTrans;
+  //   // 予測姿勢を計算
+  //   currentTrans = currentTrans*diffTrans;
 
-    // //変更後姿勢
-    // ROS_INFO("nextPose");
-    // printTrans(currentTrans);
+  //   // //変更後姿勢
+  //   // ROS_INFO("nextPose");
+  //   // printTrans(currentTrans);
 
-    // 予測姿勢を反映
-    geometry_msgs::Transform tmp = tf2::toMsg(currentTrans);
-    ndt_pose.pose.position.x = tmp.translation.x;
-    ndt_pose.pose.position.y = tmp.translation.y;
-    ndt_pose.pose.position.z = tmp.translation.z;
-    ndt_pose.pose.orientation = tmp.rotation;
-  }
+  //   // 予測姿勢を反映
+  //   geometry_msgs::Transform tmp = tf2::toMsg(currentTrans);
+  //   ndt_pose.pose.position.x = tmp.translation.x;
+  //   ndt_pose.pose.position.y = tmp.translation.y;
+  //   ndt_pose.pose.position.z = tmp.translation.z;
+  //   ndt_pose.pose.orientation = tmp.rotation;
+  // }
 }
 
 /**
@@ -175,7 +178,6 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   PointCloud_xyz::Ptr scan_ptr(new PointCloud_xyz(scan));
   PointCloud_xyz::Ptr filtered_scan_ptr(new PointCloud_xyz());
 
-
   // 観測点群のダウンサンプリング
   pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
   voxel_grid_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
@@ -190,19 +192,19 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
 
   tf2::Transform baseSensorTrans;
   try {
-    tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", input->header.frame_id,
-                                           /*ros::Time(0)*/ input->header.stamp,
-                                           ros::Duration(3.0)).transform,
+    tf2::fromMsg(tfBuffer_
+                     .lookupTransform("base_footprint", input->header.frame_id,
+                                      /*ros::Time(0)*/ input->header.stamp, ros::Duration(3.0))
+                     .transform,
                  baseSensorTrans);
   } catch (tf2::TransformException &ex) {
     ROS_WARN("Could NOT transform : %s", ex.what());
     return;
   }
 
-
   // 点群センサの現在位置を予測，NDTの初期位置として利用
   tf2::Transform ndtPoseTrans;
-  tf2::fromMsg(ndt_pose.pose,ndtPoseTrans);
+  tf2::fromMsg(ndt_pose.pose, ndtPoseTrans);
   tf2::Transform predictTrans;
   predictTrans = ndtPoseTrans * baseSensorTrans;
 
@@ -248,8 +250,10 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   //! base_footprintの座標を取得
   tf2::Transform sensorBaseTrans, mapNDTSensorPoseTrans;
   try {
-    tf2::fromMsg(tfBuffer_.lookupTransform(input->header.frame_id, "base_footprint",
-                                           input->header.stamp, ros::Duration(3.0)).transform,
+    tf2::fromMsg(tfBuffer_
+                     .lookupTransform(input->header.frame_id, "base_footprint", input->header.stamp,
+                                      ros::Duration(3.0))
+                     .transform,
                  // tf2::fromMsg(tfBuffer_.lookupTransform(input->header.frame_id,
                  // "base_footprint", ros::Time(0)).transform,
                  sensorBaseTrans);
@@ -261,10 +265,15 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   mapNDTBasePoseTrans.mult(mapNDTSensorPoseTrans, sensorBaseTrans);
 
   // NDTに時間がかかっているので，算出された絶対姿勢を姿勢遷移に変換し，最新の姿勢に適用する
-  tf2::Transform diffTrans = ndtPoseTrans.inverse()*mapNDTBasePoseTrans;
+  tf2::Transform diffTrans = ndtPoseTrans.inverse() * mapNDTBasePoseTrans;
   tf2::Transform latestNdtPoseTrans;
-  tf2::fromMsg(ndt_pose.pose,latestNdtPoseTrans);
-  latestNdtPoseTrans = latestNdtPoseTrans*diffTrans;
+  tf2::fromMsg(ndt_pose.pose, latestNdtPoseTrans);
+  latestNdtPoseTrans = latestNdtPoseTrans * diffTrans;
+
+  geometry_msgs::TransformStamped diffTransMsg;
+  diffTransMsg.transform = tf2::toMsg(diffTrans);
+  diffTransMsg.header.stamp = input->header.stamp;
+  trans_pub.publish(diffTransMsg);
 
   geometry_msgs::Transform tmp = tf2::toMsg(latestNdtPoseTrans);
   // geometry_msgs::Transform tmp = tf2::toMsg(mapNDTBasePoseTrans);
@@ -280,6 +289,12 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   ndt_pose_msg.pose.pose = ndt_pose.pose;
 
   ndt_pose_pub.publish(ndt_pose_msg);
+  std_msgs::Bool isCoverged;
+  isCoverged.data = (uint8_t)ndt.hasConverged();
+  converge_pub.publish(isCoverged);
+  std_msgs::Float64 fitnessScore;
+  fitnessScore.data = ndt.getFitnessScore();
+  score_pub.publish(fitnessScore);
 
   std::cout << "-----------------------------------------------------------------" << std::endl;
   std::cout << "Sequence: " << input->header.seq << std::endl;
@@ -317,6 +332,9 @@ int main(int argc, char **argv) {
   // ndtでの推定座標．座標系がこれだけ違う．多分base_linkではない何か
   time_ndt_matching_pub = nh.advertise<std_msgs::Float32>("time_ndt_matching", 1000);
   filtered_scan_pub = nh.advertise<PointCloud_xyz>("filtered_scan", 10);
+  trans_pub = nh.advertise<geometry_msgs::TransformStamped>("trans", 10);
+  converge_pub = nh.advertise<std_msgs::Bool>("is_converged", 10);
+  score_pub = nh.advertise<std_msgs::Float64>("score", 10);
 
   // Subscribers
   ros::Subscriber map_sub = nh.subscribe("points_map", 10, map_callback);

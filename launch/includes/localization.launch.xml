@@ -1,6 +1,7 @@
 <launch>
   <arg name="is_real" default="true"/>
   <!--自己位置推定-->
+  <node pkg="chairbot_selfdrive" type="pot_pose_pf" name="pot_pose_pf"/>
   <include file="$(find chairbot_selfdrive)/launch/velodyne_matcher.launch" />
   <!--"map"->"odom"-->
   <include file="$(find chairbot_selfdrive)/launch/pose2frame.launch" />
