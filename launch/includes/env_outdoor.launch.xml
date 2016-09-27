@@ -1,5 +1,5 @@
 <launch>
-  <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_outdoor.yaml" />
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f1_outdoor.yaml" />
   <node pkg="pcl_ros" type="pcd_to_pointcloud" args="$(find chairbot_selfdrive)/resources/coi_10cm.pcd 0 pcd _frame_id:=/pcd_map" name="pub_map"/>
   <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 pcd_map map" name="tf_map"/>
   <node pkg="tf2_ros" type="static_transform_publisher" args="613897.950396 3718166.67003 0 0 0 0 utm pcd_map" name="tf_utm"/>

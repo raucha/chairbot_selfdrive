@@ -6,7 +6,7 @@
   <!--"map"->"odom"-->
   <include file="$(find chairbot_selfdrive)/launch/pose2frame.launch" />
   <!--velodyneを起動-->
-  <group if="$(arg is_real)">
+  <!--<group if="$(arg is_real)">
     <include file="$(find velodyne_pointcloud)/launch/32e_points.launch" />
-  </group>
+  </group>-->
 </launch>

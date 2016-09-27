@@ -1,6 +1,12 @@
+# 屋内外を通した移動
+roslaunch tms_rc_mimamorukun_control minimal_with_tf.launch
+roslaunch chairbot_selfdrive move_base.launch
+export ROS_NAMESPACE=mimamorukun;roslaunch velodyne_pointcloud 32e_points.launch;unset ROS_NAMESPACE  # 電圧低下でよく止まるため・・・．
+roslaunch chairbot_selfdrive pot10_lrf_reflectance.launch
+
 # 屋外での移動のシミュレーション
 rosbag play ~/Downloads/coi玄関-看板前_gpslink.bag /velodyne_points:=/mimamorukun/velodyne_points --clock -l
-rviz -d `rospakc find chairbot_selfdrive`/config/outdoor.rivz.rviz /initialpose:=/mimamorukun/initialpose /move_base_simple/goal:=/mimamorukun/move_base_simple/goal
+rviz -d `rospack find chairbot_selfdrive`/config/outdoor.rivz.rviz /initialpose:=/mimamorukun/initialpose /move_base_simple/goal:=/mimamorukun/move_base_simple/goal
 roslaunch chairbot_selfdrive sim.launch
 
 # Viconを使ったmove_base
