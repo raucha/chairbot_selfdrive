@@ -192,10 +192,9 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
 
   tf2::Transform baseSensorTrans;
   try {
-    tf2::fromMsg(tfBuffer_
-                     .lookupTransform("base_footprint", input->header.frame_id,
-                                      /*ros::Time(0)*/ input->header.stamp, ros::Duration(3.0))
-                     .transform,
+    tf2::fromMsg(tfBuffer_.lookupTransform("base_footprint", input->header.frame_id,
+                                           /*ros::Time(0)*/ input->header.stamp,
+                                           ros::Duration(3.0)).transform,
                  baseSensorTrans);
   } catch (tf2::TransformException &ex) {
     ROS_WARN("Could NOT transform : %s", ex.what());
@@ -250,10 +249,8 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   //! base_footprintの座標を取得
   tf2::Transform sensorBaseTrans, mapNDTSensorPoseTrans;
   try {
-    tf2::fromMsg(tfBuffer_
-                     .lookupTransform(input->header.frame_id, "base_footprint", input->header.stamp,
-                                      ros::Duration(3.0))
-                     .transform,
+    tf2::fromMsg(tfBuffer_.lookupTransform(input->header.frame_id, "base_footprint",
+                                           input->header.stamp, ros::Duration(3.0)).transform,
                  // tf2::fromMsg(tfBuffer_.lookupTransform(input->header.frame_id,
                  // "base_footprint", ros::Time(0)).transform,
                  sensorBaseTrans);
