@@ -1,3 +1,11 @@
+# B-senから廊下への自律移動, ポータブルGO８番岳を利用
+roslaunch tms_rc_mimamorukun_control minimal_with_tf.launch
+roslaunch chairbot_selfdrive pot10_lrf_reflectance.launch
+roslaunch chairbot_selfdrive move_base_coi_f2.launch
+rviz /initialpose:=/mimamorukun/initialpose /move_base_simple/goal:=/mimamorukun/move_base_simple/goal
+rosrun tms_ss_vicon vicon_stream
+rosrun tf static_transform_publisher 0.973  -0.333  0 -2.542 0 0 map pot_laser8 100
+
 # 屋内外を通した移動
 roslaunch tms_rc_mimamorukun_control minimal_with_tf.launch
 roslaunch chairbot_selfdrive move_base.launch

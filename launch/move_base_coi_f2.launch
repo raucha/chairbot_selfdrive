@@ -4,16 +4,14 @@
     <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f2.yaml" />
 
     <!-- tf publisher -->
-    <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint base_link" name="tf_baselink"/>
-    <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint velodyne" name="tf_velodyne"/>
-    <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint gps_link" name="tf_gps"/>
-    <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 pcd_map map" name="tf_map"/>
+    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
     <node pkg="tf2_ros" type="static_transform_publisher" args="2.661 -2.515 0 0.64228116473391323555 0 0 map world" name="tf_world"/>
-    <include file="$(find chairbot_selfdrive)/launch/pose2frame.launch" />
 
     <!--自己位置推定-->
     <node pkg="chairbot_selfdrive" type="vicon2pose" name="vicon2pose" args="vicon_pose:=initialpose" />
-    <node pkg="chairbot_selfdrive" type="pot_pose_pf" name="pot_pose_pf" args="observation_point:=/lrf_pose" />
+    <include file="$(find chairbot_selfdrive)/launch/includes/localization.launch.xml">
+      <arg name="is_real" value="true" />
+    </include>
 
     <!-- Move base -->
     <include file="$(find chairbot_selfdrive)/launch/includes/move_base.launch.xml" />
