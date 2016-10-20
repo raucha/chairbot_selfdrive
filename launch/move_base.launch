@@ -1,9 +1,11 @@
 <launch>
   <group ns="mimamorukun">
-    <!--static transform-->
-    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
     <!--点群マップ，グリッドマップ-->
     <include file="$(find chairbot_selfdrive)/launch/includes/env_outdoor.launch.xml" />
+
+    <!--static transform-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
+
     <!--自己位置推定-->
     <include file="$(find chairbot_selfdrive)/launch/includes/localization.launch.xml">
       <arg name="is_real" value="true" />
