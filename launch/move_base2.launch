@@ -1,0 +1,10 @@
+<launch>
+  <group ns="mimamorukun">
+    <!-- Map server -->
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f1_outdoor.yaml" />
+    <!--<node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f2.yaml" />-->
+
+    <!-- Move base -->
+    <include file="$(find chairbot_selfdrive)/launch/includes/move_base2.launch.xml" />
+  </group>
+</launch>

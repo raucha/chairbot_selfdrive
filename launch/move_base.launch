@@ -1,44 +1,12 @@
 <launch>
   <group ns="mimamorukun">
-    <!-- LRFを起動 -->
-    <include file="$(find chairbot_selfdrive)/launch/includes/lrf0.launch.xml">
-      <arg name="topic_name" value="scan_raw"/>
-    </include>
-    <!-- <include file="$(find chairbot_selfdrive)/launch/includes/lrf1.launch.xml">
-      <arg name="topic_name" value="scan_raw1"/>
-    </include> -->
-    <!--矩形切り捨て-->
-    <node pkg="raucha_utils" type="laser_crop_rect" name="$(anon scan_crop)" output="screen">
-      <remap from="scan_in" to="scan_raw" />
-      <remap from="scan_out" to="scan" />
-      <param name="xmin" value="-0.15" />
-      <param name="xmax" value="0.95" />
-      <param name="ymin" value="-0.5" />
-      <param name="ymax" value="0.5" />
-      <param name="frame_id" value="base_footprint" />
-    </node>
-    <!-- <node pkg="raucha_utils" type="laser_crop_rect" name="$(anon scan_crop1)" output="screen">
-      <remap from="scan_in" to="scan_raw1" />
-      <remap from="scan_out" to="scan1" />
-      <param name="xmin" value="-0.15" />
-      <param name="xmax" value="0.95" />
-      <param name="ymin" value="-0.5" />
-      <param name="ymax" value="0.5" />
-      <param name="frame_id" value="base_footprint" />
-    </node> -->
-
-    <!-- Map server -->
-    <!-- <arg name="map_file" default="$(env TURTLEBOT_GAZEBO_MAP_FILE)"/> -->
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_w2b2.yaml" />
-
-    <!-- Localization -->
-    <arg name="initial_pose_x" default="0.0" />
-    <arg name="initial_pose_y" default="0.0" />
-    <arg name="initial_pose_a" default="0.0" />
-    <include file="$(find chairbot_selfdrive)/launch/includes/amcl.launch.xml">
-      <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
-      <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
-      <arg name="initial_pose_a" value="$(arg initial_pose_a)" />
+    <!--static transform-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
+    <!--点群マップ，グリッドマップ-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/env_outdoor.launch.xml" />
+    <!--自己位置推定-->
+    <include file="$(find chairbot_selfdrive)/launch/includes/localization.launch.xml">
+      <arg name="is_real" value="true" />
     </include>
 
     <!-- Move base -->

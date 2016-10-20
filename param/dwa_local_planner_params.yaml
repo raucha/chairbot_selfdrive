@@ -7,25 +7,32 @@ DWAPlannerROS:
   max_vel_y: 0.0  # 2輪だから要らない
   min_vel_y: 0.0  # 2輪だから要らない
 
+  # max_trans_vel: 0.25 # choose slightly less than the base's capability
+  # min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
+  # trans_stopped_vel: 0.1  # 停止状態とみなす速度
   max_trans_vel: 0.5 # choose slightly less than the base's capability
   min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
-  trans_stopped_vel: 0.1  # 停止状態とみなす速度
+  trans_stopped_vel: 0.01  # 停止状態とみなす速度
 
   # Warning!
   #   do not set min_trans_vel to 0.0 otherwise dwa will always think translational velocities
   #   are non-negligible and small in place rotational velocities will be created.
 
+  # max_rot_vel: 0.6  # choose slightly less than the base's capability
+  # min_rot_vel: 0.1  # this is the min angular velocity when there is negligible translational velocity
+  # rot_stopped_vel: 0.4  # 停止状態とみなす角速度
   max_rot_vel: 2.5  # choose slightly less than the base's capability
-  min_rot_vel: 0.4  # this is the min angular velocity when there is negligible translational velocity
-  rot_stopped_vel: 0.4  # 停止状態とみなす角速度
+  min_rot_vel: 0.05  # this is the min angular velocity when there is negligible translational velocity
+  rot_stopped_vel: 0.001  # 停止状態とみなす角速度
 
-  acc_lim_x: 0.25    # 加速度
+  acc_lim_x: 1.0    # 加速度
+  # acc_lim_x: 0.25    # 加速度
   acc_lim_theta: 2.0
   acc_lim_y: 0.0     # 2輪だから要らない
 
 # Goal Tolerance Parameters
-  yaw_goal_tolerance: 0.3  # 0.05
-  xy_goal_tolerance: 0.15  # 0.10
+  yaw_goal_tolerance: 0.6  # 0.05
+  xy_goal_tolerance: 0.50  # 0.10
   # latch_xy_goal_tolerance: false
 
 # Forward Simulation Parameters
@@ -35,10 +42,12 @@ DWAPlannerROS:
   vtheta_samples: 20  # 20
 
 # Trajectory Scoring Parameters
-  path_distance_bias: 32.0      # 32.0   - 大きいほど経路を忠実に追従
+  path_distance_bias: 40.0      # 32.0   - 大きいほど経路を忠実に追従
+  # path_distance_bias: 32.0      # 32.0   - 大きいほど経路を忠実に追従
   goal_distance_bias: 24.0      # 24.0   - 大きいほどローカルゴールへ近づこうとする
-  occdist_scale: 0.5            # 0.01   - 大きいほど障害物を避けようとする
-  forward_point_distance: 0.325 # 0.325  - how far along to place an additional scoring point
+  occdist_scale: 3.0#0.5            # 0.01   - 大きいほど障害物を避けようとする
+  # occdist_scale: 0.5            # 0.01   - 大きいほど障害物を避けようとする
+  forward_point_distance: 0.6 # 0.325  - how far along to place an additional scoring point
   stop_time_buffer: 0.2         # 0.2    - amount of time a robot must stop in before colliding for a valid traj.
   scaling_speed: 0.25           # 0.25   - absolute velocity at which to start scaling the robot's footprint
   max_scaling_factor: 0.2       # 0.2    - how much to scale the robot's footprint when at speed.

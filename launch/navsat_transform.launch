@@ -35,8 +35,8 @@
 
       <!-- If this is true, the transform world_frame->utm transform is broadcast
            for use by other nodes. Defaults to false. -->
-      <param name="broadcast_utm_transform" value="true"/>
-      <!-- <param name="broadcast_utm_transform" value="false"/> -->
+      <!--<param name="broadcast_utm_transform" value="true"/>-->
+       <param name="broadcast_utm_transform" value="false"/>
 
       <!-- If this is true, all received odometry data is converted back to a lat/lon
            and published as a NavSatFix message as /gps/filtered. Defaults to false. -->
@@ -50,26 +50,23 @@
            cannot use your odometry source for yaw if you have only one source for yaw
            data and it has its differential or relative parameter set to true. Defaults
            to false. -->
-      <param name="use_odometry_yaw" value="true"/>
-      <!-- <param name="use_odometry_yaw" value="false"/> -->
+      <!--<param name="use_odometry_yaw" value="true"/>-->
+       <param name="use_odometry_yaw" value="false"/>
 
-      <!-- If this is true, the node ignores the IMU data and gets its heading from the
-           odometry source (typically the /odometry/filtered topic coming from one of
-           robot_localization's state estimation nodes). BE CAREFUL when using this!
-           The yaw value in your odometry source *must* be world-referenced, e.g., you
-           cannot use your odometry source for yaw if you have only one source for yaw
-           data and it has its differential or relative parameter set to true. Defaults
-           to false. -->
-      <param name="wait_for_datum" value="false"/>
-      <!-- <param name="wait_for_datum" value="true"/> -->
+      <!-- If true, will retrieve the datum from the 'datum' parameter below, if available.
+           If no 'datum' parameter exists, navsat_transform_node will wait until the user
+           calls the 'datum' service with the SetDatum service message. -->
+      <!--<param name="wait_for_datum" value="false"/>-->
+      <param name="wait_for_datum" value="true"/>
 
       <!-- Instead of using the first GPS location and IMU-based heading for the
       local-frame origin, users can specify the origin (datum) using this parameter.
       The fields in the parameter represent latitude and longitude in decimal degrees,
       and heading in radians. As navsat_transform_node assumes an ENU standard, a 0
       heading corresponds to east. -->
-      <rosparam param="datum">[33.595755, 130.21930, 0.0, map, base_link]</rosparam>
-      <!-- <rosparam param="datum">[55.944904, -3.186693, 0.0, map, base_link]</rosparam> -->
+      <!--<rosparam param="datum">[33.597235, 130.227455, 0.0, pcd_map, base_footprint]</rosparam>-->
+      <!--from googlemap-->
+      <rosparam param="datum">[33.597161, 130.227557, 0.0, pcd_map, base_footprint]</rosparam>
 
       <remap from="/imu/data" to="/imu/data"/>
       <remap from="/odometry/filtered" to="/odometry/ekf_relative"/>
@@ -81,11 +78,11 @@
       <remap from="/gps/filtered" to=""/>
       -->
     </node>
-    <!-- <node name="gps_conv" pkg="gps_common" type="utm_odometry_node">
+     <node name="gps_conv" pkg="gps_common" type="utm_odometry_node">
       <remap from="odom" to="/gps_conv"/>
       <remap from="fix" to="/navsat/fix" />
       <param name="rot_covariance" value="99999" />
       <param name="frame_id" value="utm" />
       <param name="child_frame_id" value="gps_conv" />
-    </node> -->
+    </node>
 </launch>

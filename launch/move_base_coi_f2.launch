@@ -1,0 +1,19 @@
+<launch>
+  <group ns="mimamorukun">
+    <!-- Map server -->
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find chairbot_selfdrive)/resources/map_coi_f2.yaml" />
+
+    <!-- tf publisher -->
+    <include file="$(find chairbot_selfdrive)/launch/includes/tf_common.launch.xml" />
+    <node pkg="tf2_ros" type="static_transform_publisher" args="2.661 -2.515 0 0.64228116473391323555 0 0 map world" name="tf_world"/>
+
+    <!--自己位置推定-->
+    <node pkg="chairbot_selfdrive" type="vicon2pose" name="vicon2pose" args="vicon_pose:=initialpose" />
+    <include file="$(find chairbot_selfdrive)/launch/includes/localization.launch.xml">
+      <arg name="is_real" value="true" />
+    </include>
+
+    <!-- Move base -->
+    <include file="$(find chairbot_selfdrive)/launch/includes/move_base.launch.xml" />
+  </group>
+</launch>

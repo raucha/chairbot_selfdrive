@@ -1,0 +1,6 @@
+<launch>
+  <!--static transform-->
+  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint base_link" name="tf_baselink"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint velodyne" name="tf_velodyne"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" args="0 0 1.6 0 0 0 base_footprint gps_link" name="tf_gps"/>
+</launch>
