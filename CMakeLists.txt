@@ -31,9 +31,14 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   tf2_ros
   laser_geometry
-  pcl_ros
+  # pcl_ros
   pcl_conversions
 )
+find_package(PCL 1.3 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 
 SET(CMAKE_CXX_FLAGS "-std=c++03 -O2 ${CMAKE_CXX_FLAGS}")
 # SET(CMAKE_CXX_FLAGS "-std=c++03 -O2 -g ${CMAKE_CXX_FLAGS}")
@@ -153,7 +158,7 @@ add_dependencies(pf_localization_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(pf_localization_node ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
 add_executable(lrf_reflectance src/lrf_reflectance.cpp)
-target_link_libraries(lrf_reflectance ${catkin_LIBRARIES})
+target_link_libraries(lrf_reflectance ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable(pot_pose_pf src/pot_pose_pf.cpp)
 add_dependencies(pot_pose_pf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -168,7 +173,11 @@ add_dependencies(vicon2pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTE
 target_link_libraries(vicon2pose ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
 add_executable(velodyne_matcher src/velodyne_matcher.cpp)
-target_link_libraries(velodyne_matcher ${catkin_LIBRARIES})
+target_link_libraries(velodyne_matcher ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(ndt_voxel_matcher src/ndt_voxel_matcher.cpp)
+add_dependencies(vicon2pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(ndt_voxel_matcher ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(chairbot_selfdrive

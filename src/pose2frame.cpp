@@ -44,7 +44,7 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &arg) {
       mapPoseTrans.setRotation(new_quat);
     }
 
-    ROS_INFO_STREAM("mapPoseTrans x:" << mapPoseTrans.getOrigin().getX()
+    ROS_DEBUG_STREAM("mapPoseTrans x:" << mapPoseTrans.getOrigin().getX()
                                       << " y:" << mapPoseTrans.getOrigin().getY()
                                       << " z:" << mapPoseTrans.getOrigin().getZ() << " yaw:"
                                       << tf2::getYaw(mapPoseTrans.getRotation()) * 180.0 / 3.1415);

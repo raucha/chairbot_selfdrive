@@ -266,52 +266,6 @@ std::vector<geometry_msgs::PointStamped> observeBuffer;
 std::vector<nav_msgs::Odometry> odomBuffer;
 
 /**
- * @brief パーティクルフィルタのパーティクル群を生成
- * @detail 引数は座標，角度，座標の分散，角度の分散
- */
-void GenInitialParticles(double x, double y, double rad, double cov_trans, double cov_rad) {
-  //パーティクルの初期配置
-  ColumnVector prior_Mu(
-      STATE_SIZE);  // [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
-  prior_Mu(1) = x;
-  prior_Mu(2) = y;
-  prior_Mu(3) = rad;  //角度
-  prior_Mu(4) = 0.0;  //左車輪定常ノイズ
-  prior_Mu(5) = 0.0;  //右車輪定常ノイズ
-  prior_Mu(6) = 0.0;  // z
-  tf2::Quaternion quat;
-  quat.setRPY(0, 0, rad);
-  quat = quat.normalize();
-  geometry_msgs::Quaternion quatMsg = tf2::toMsg(quat);
-  prior_Mu(7) = quatMsg.x;   // quat x
-  prior_Mu(8) = quatMsg.y;   // quat y
-  prior_Mu(9) = quatMsg.z;   // quat z
-  prior_Mu(10) = quatMsg.w;  // quat w
-  SymmetricMatrix prior_Cov(STATE_SIZE);
-  prior_Cov = 0.0;
-  prior_Cov(1, 1) = cov_trans;
-  prior_Cov(2, 2) = cov_trans;
-  prior_Cov(3, 3) = cov_rad;
-  // 初期配置で利用する分布
-  Gaussian prior_cont(prior_Mu, prior_Cov);
-
-  // Discrete prior for Particle filter (using the continuous Gaussian prior)
-  // 初期分布が離散化されたパーティクルを取得
-  vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
-  prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
-  MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
-  prior_discr.ListOfSamplesSet(prior_samples);
-  if (is_got_initial_pose) {
-    // 古いパーティクル分布を消す
-    delete g_filter;
-  }
-  // パーティクルフィルタを生成
-  // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
-  g_filter = new CustomParticleFilter(&prior_discr, 0.0, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
-  is_got_initial_pose = true;
-}
-
-/**
  * @brief PFで推定した姿勢を発行
  */
 void PublishPose() {
@@ -391,6 +345,56 @@ void PublishParticles() {
     particles_msg.poses.insert(particles_msg.poses.begin(), pose);
   }
   particle_pub.publish(particles_msg);
+}
+
+/**
+ * @brief パーティクルフィルタのパーティクル群を生成
+ * @detail 引数は座標，角度，座標の分散，角度の分散
+ */
+void GenInitialParticles(double x, double y, double rad, double cov_trans, double cov_rad) {
+  //パーティクルの初期配置
+  ColumnVector prior_Mu(
+      STATE_SIZE);  // [x, y, θ, 左車輪定常ノイズ, 右車輪定常ノイズ, z  x, y, z, w]
+  prior_Mu(1) = x;
+  prior_Mu(2) = y;
+  prior_Mu(3) = rad;  //角度
+  prior_Mu(4) = 0.0;  //左車輪定常ノイズ
+  prior_Mu(5) = 0.0;  //右車輪定常ノイズ
+  prior_Mu(6) = 0.0;  // z
+  tf2::Quaternion quat;
+  quat.setRPY(0, 0, rad);
+  quat = quat.normalize();
+  geometry_msgs::Quaternion quatMsg = tf2::toMsg(quat);
+  prior_Mu(7) = quatMsg.x;   // quat x
+  prior_Mu(8) = quatMsg.y;   // quat y
+  prior_Mu(9) = quatMsg.z;   // quat z
+  prior_Mu(10) = quatMsg.w;  // quat w
+  SymmetricMatrix prior_Cov(STATE_SIZE);
+  prior_Cov = 0.0;
+  prior_Cov(1, 1) = cov_trans;
+  prior_Cov(2, 2) = cov_trans;
+  prior_Cov(3, 3) = cov_rad;
+  // 初期配置で利用する分布
+  Gaussian prior_cont(prior_Mu, prior_Cov);
+
+  // Discrete prior for Particle filter (using the continuous Gaussian prior)
+  // 初期分布が離散化されたパーティクルを取得
+  vector<Sample<ColumnVector> > prior_samples(NUM_SAMPLES);
+  prior_cont.SampleFrom(prior_samples, NUM_SAMPLES, CHOLESKY, NULL);
+  MCPdf<ColumnVector> prior_discr(NUM_SAMPLES, STATE_SIZE);
+  prior_discr.ListOfSamplesSet(prior_samples);
+  if (is_got_initial_pose) {
+    // 古いパーティクル分布を消す
+    delete g_filter;
+  }
+  // パーティクルフィルタを生成
+  // g_filter = new CustomParticleFilter(&prior_discr, 0, NUM_SAMPLES / 4.0, MULTINOMIAL_RS);
+  g_filter = new CustomParticleFilter(&prior_discr, 0.0, NUM_SAMPLES * 9.0 / 10.0, MULTINOMIAL_RS);
+  is_got_initial_pose = true;
+
+  ///! 推定姿勢発行
+  PublishPose();
+  PublishParticles();
 }
 
 ros::Time odomLast;
@@ -528,9 +532,6 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
   double rad = tf::getYaw(mapPose.pose.orientation);
   GenInitialParticles(mapPose.pose.position.x, mapPose.pose.position.y, rad,
                       arg->pose.covariance.at(0), arg->pose.covariance.at(35));
-  ///! 推定姿勢発行
-  PublishPose();
-  PublishParticles();
 }
 
 void transCallback(const geometry_msgs::TransformStamped::ConstPtr& arg) {
@@ -538,6 +539,27 @@ void transCallback(const geometry_msgs::TransformStamped::ConstPtr& arg) {
   if (!is_got_initial_pose) {
     return;
   }
+  /// 屋外が遠ければNDTを無視
+  geometry_msgs::TransformStamped mapBasefoot;
+  // geometry_msgs::PoseStamped mapBasefoot;
+  try {
+    // geometry_msgs::TransformStamped mapBasefoot;
+    mapBasefoot = tfBuffer_.lookupTransform(
+        "map", "base_footprint", /*ros::Time(0)*/ arg->header.stamp /*ros::Time()*/,
+        ros::Duration(3.0));
+  } catch (tf2::TransformException& ex) {
+    ROS_WARN("Could NOT transform : %s", ex.what());
+    return;
+  }
+  ROS_INFO_STREAM("mapBasefoot Pose: "<<mapBasefoot);
+  if(-10<mapBasefoot.transform.translation.x &&
+      mapBasefoot.transform.translation.x < 10 &&
+    mapBasefoot.transform.translation.y < -10){
+    // mapBasefoot.transform.translation.y < -6){
+    ROS_INFO_STREAM("In indoor and ignore NDT transform");
+    return;
+  }
+
   const char TRANS_SIZE = 7;
   ///! 移動距離，変化角度計算
   ColumnVector input(TRANS_SIZE);  // [x, y, z,  x, y, z, w]
@@ -627,6 +649,10 @@ int main(int argc, char** argv) {
   // ros::Subscriber pf_predict_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, PushOdom);
   // ros::Subscriber pf_update_sub =
   //     nh.subscribe<geometry_msgs::PointStamped>("lrf_pose", 10, PushObserve);
+
+  // 原点位置に初期値パーティクルを生成
+  GenInitialParticles(0.0, 0.0, 0.0, pow(0.1, 2),
+                      pow(30 * M_PI / 180.0, 2));
   ros::spin();
   delete g_filter;
 }

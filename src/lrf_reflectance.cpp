@@ -5,6 +5,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include "message_filters/subscriber.h"
 #include "tf/message_filter.h"
+#include <std_msgs/Empty.h>
 
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl/point_types.h>
@@ -47,6 +48,11 @@ ros::Publisher pub, pub_pc, pub_pose, pub_point, pub_pc_filtered;
 int callbacked_num = 0;
 #define INITIALS_SIZE 5
 sensor_msgs::LaserScan initials[INITIALS_SIZE];
+
+void updateBgCallback(const std_msgs::Empty::ConstPtr& scan) {
+  ROS_INFO("Start background updating");
+  callbacked_num = 0;
+}
 
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   ROS_DEBUG("got scan data");
@@ -119,8 +125,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   tree->setInputCloud(pcl_cloud);
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance(0.04);  // 5cm
-  ec.setMinClusterSize(10);
+  ec.setClusterTolerance(0.05);  // 5cm
+  ec.setMinClusterSize(8);
   ec.setMaxClusterSize(10000);
   ec.setSearchMethod(tree);
   ec.setInputCloud(pcl_cloud);
@@ -241,6 +247,7 @@ int main(int argc, char** argv) {
   ROS_INFO_STREAM("intensity_th:" << intensity_th);
 
   ros::Subscriber scan_sub = nh.subscribe("scan_in", 10, laserCallback);
+  ros::Subscriber update_sub = nh.subscribe("~/update_background", 10, updateBgCallback);
 
   pub = nh.advertise<sensor_msgs::LaserScan>("scan_out", 5);
   pub_pc = nh.advertise<sensor_msgs::PointCloud2>("pc_out", 5);

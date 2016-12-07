@@ -108,7 +108,7 @@ static void initialpose_callback(const nav_msgs::Odometry::ConstPtr &input) {
   // prevNavDataTime = input->header.stamp;
   // if(!got_init_pose){
   // 初期姿勢設定
-  ROS_INFO("initialpose_callback");
+  ROS_DEBUG("initialpose_callback");
   ndt_pose.pose = input->pose.pose;
   ndt_pose.header = input->header;
   got_init_pose = true;

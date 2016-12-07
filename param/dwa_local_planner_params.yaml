@@ -42,10 +42,12 @@ DWAPlannerROS:
   vtheta_samples: 20  # 20
 
 # Trajectory Scoring Parameters
-  path_distance_bias: 40.0      # 32.0   - 大きいほど経路を忠実に追従
+  path_distance_bias: 50.0      # 32.0   - 大きいほど経路を忠実に追従
+  # path_distance_bias: 40.0      # 32.0   - 大きいほど経路を忠実に追従
   # path_distance_bias: 32.0      # 32.0   - 大きいほど経路を忠実に追従
   goal_distance_bias: 24.0      # 24.0   - 大きいほどローカルゴールへ近づこうとする
-  occdist_scale: 3.0#0.5            # 0.01   - 大きいほど障害物を避けようとする
+  occdist_scale: 4.0            # 0.01   - 大きいほど障害物を避けようとする
+  # occdist_scale: 3.0            # 0.01   - 大きいほど障害物を避けようとする
   # occdist_scale: 0.5            # 0.01   - 大きいほど障害物を避けようとする
   forward_point_distance: 0.6 # 0.325  - how far along to place an additional scoring point
   stop_time_buffer: 0.2         # 0.2    - amount of time a robot must stop in before colliding for a valid traj.

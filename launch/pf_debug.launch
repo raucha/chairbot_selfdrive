@@ -1,0 +1,6 @@
+<launch>
+  <group ns="mimamorukun">
+    <!--<node pkg="chairbot_selfdrive" type="pot_pose_pf" name="pot_pose_pf" output="screen"/>-->
+    <node pkg="chairbot_selfdrive" type="pot_pose_pf" name="pot_pose_pf" output="screen" launch-prefix="terminator -x gdb"/>
+  </group>
+</launch>
