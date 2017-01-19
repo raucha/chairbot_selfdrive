@@ -9,8 +9,8 @@
     <!--<remap from="initialpose" to="pf_filtered" />-->
     <!--<remap from="trans" to="trans_useless" />-->
   <!--</node>-->
-  <!--<node pkg="chairbot_selfdrive" type="ndt_voxel_matcher" name="ndt_voxel_matcher" output="screen">-->
-  <node pkg="chairbot_selfdrive" type="velodyne_matcher" name="velodyne_matcher">
+  <node pkg="chairbot_selfdrive" type="ndt_voxel_matcher" name="ndt_voxel_matcher" output="screen">
+  <!--<node pkg="chairbot_selfdrive" type="velodyne_matcher" name="velodyne_matcher">-->
     <remap from="points_raw" to="velodyne_points_throttle" />
     <remap from="points_map" to="cloud_pcd" />
     <remap from="initialpose" to="pf_filtered" />

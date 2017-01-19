@@ -533,11 +533,12 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   /****** 正解に限らずパーティクルをばら撒く場合 *******/
   int AngleDivNum = 72;
   double AngleDiv = 360 / AngleDivNum;
-  int inum = 100;
-  int pnum = 1000;  // 初期パーティクルの数
+  // int inum = 100;
+  int pnum = 100;  // 初期パーティクルの数
   // int pnum = AngleDivNum * inum;  // 初期パーティクルの数
   std::vector<Particle> particle(pnum);
 
+  /*
   for (int i = 0; i < inum; i++) {
     for (int j = 0; j < AngleDivNum; j++) {
       Particle p;
@@ -554,6 +555,19 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
       particle.push_back(p);
     }
   }
+  */
+  for (int i = 0; i < pnum; i++) {
+    Particle p;
+    p.w = 0.0;
+    p.x = predictTrans.getOrigin().x();
+    p.y = predictTrans.getOrigin().y();
+    p.z = predictTrans.getOrigin().z();
+    p.a = roll;
+    p.b = pitch;
+    p.g = yaw;
+    particle.push_back(p);
+  }
+
   Eigen::Translation3f init_trans(predictTrans.getOrigin().x(), predictTrans.getOrigin().y(),
                                   predictTrans.getOrigin().z());
   Eigen::AngleAxisf init_rot_x(roll, Eigen::Vector3f::UnitX());
@@ -572,12 +586,20 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
     for (std::vector<Particle>::iterator it = particle.begin(); it != particle.end(); ++it) {
       if (it != particle.begin()) {
         // パーティクルにガウス状の偏差を加える
+/*
         it->x += gaussianRand(DL, 0.0);
         it->y += gaussianRand(DL, 0.0);
         it->z += gaussianRand(DL, 0.0);
         it->a += gaussianRand(DT, 0.0);
         it->b += gaussianRand(DT, 0.0);
         it->g += gaussianRand(DT, 0.0);
+*/
+        it->x += 0.5 * (uniform_random() - 0.5);
+        it->y += 0.5 * (uniform_random() - 0.5);
+        it->z += 0.2 * (uniform_random() - 0.5);
+        it->a += 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+        it->b += 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+        it->g += 5.0 * M_PI / 180.0 * (uniform_random() - 0.5);
       }
 
       // パーティクルの保持する位置姿勢で座標変換行列を計算
@@ -612,7 +634,7 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
               << " " << max_p.b * 180.0 / M_PI << " " << max_p.g * 180.0 / M_PI << ")" << std::endl;
 
     // パーティクルフィルタの数を変更する場合
-    if (iter == 0) pnum = particles;
+    // if (iter == 0) pnum = particles;
 
     // 次世代のパーティクルを選択して残す（一様サンプリング法）
     std::vector<Particle> new_particle;

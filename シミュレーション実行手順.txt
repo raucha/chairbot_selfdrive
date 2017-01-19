@@ -1,0 +1,6 @@
+# シミュレーション実行手順
+roscore
+rosparam set /use_sim_time true
+rosbag play ~/Downloads/coi玄関-看板前.bag --clock -l /velodyne_points:=/mimamorukun/velodyne_points
+roslaunch chairbot_selfdrive move_base.launch
+rviz -d `rospack find chairbot_selfdrive`/config/velodyne_matcher.rviz
