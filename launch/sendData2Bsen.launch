@@ -1,7 +1,7 @@
 <launch>
     <group ns="mimamorukun">
     <!--tf座標系を無視した車いすの絶対座標を発行-->
-    <node pkg="chairbot_selfdrive" type="pub_dbpose.py" name="pub_dbpose.py"/>
+    <node pkg="chairbot_selfdrive" type="pub_dbpose.py" name="pub_dbpose"/>
     <!--車いすの座標をデータ中継用サーバに書き込み-->
     <node name="topic2db" pkg="raucha_utils" type="topic2db.py">
       <rosparam param="topic_names">
