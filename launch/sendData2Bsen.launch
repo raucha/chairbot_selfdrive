@@ -1,0 +1,15 @@
+<launch>
+    <group ns="mimamorukun">
+    <!--tf座標系を無視した車いすの絶対座標を発行-->
+    <node pkg="chairbot_selfdrive" type="pub_dbpose.py" name="pub_dbpose.py"/>
+    <!--車いすの座標をデータ中継用サーバに書き込み-->
+    <node name="topic2db" pkg="raucha_utils" type="topic2db.py">
+      <rosparam param="topic_names">
+        ["/mimamorukun/dbpose"]
+      </rosparam>
+      <param name="DB_ADDRESS" value="localhost"/>
+      <param name="DB_NAME" value="first_db"/>
+      <param name="DB_COLLECTION" value="wc2bsen"/>
+    </node>
+  </group>
+</launch>

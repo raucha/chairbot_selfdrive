@@ -1,0 +1,12 @@
+<launch>
+    <group ns="mimamorukun">
+    <!--データ中継用サーバのデータをトピックとして流す-->
+    <node name="db2topic" pkg="raucha_utils" type="db2topic.py">
+      <param name="DB_ADDRESS" value="DBのグローバルIPアドレス"/>
+      <param name="DB_NAME" value="first_db"/>
+      <param name="DB_COLLECTION" value="wc2bsen"/>
+    </node>
+    <!--トピックのデータをTMS-DBに書き込み-->
+    <node pkg="chairbot_selfdrive" type="writePose2TmsDB.py" />
+  </group>
+</launch>
