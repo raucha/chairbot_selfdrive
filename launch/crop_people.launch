@@ -1,0 +1,14 @@
+<launch>
+  <group ns="mimamorukun">
+  <!--矩形切り捨て-->
+  <node pkg="raucha_utils" type="people_crop_rect" name="people_crop_rect" output="screen">
+    <remap from="people_in" to="/people" />
+    <remap from="people_out" to="people_filtered" />
+    <param name="xmin" value="-0.50" />
+    <param name="xmax" value="1.5" />
+    <param name="ymin" value="-0.8" />
+    <param name="ymax" value="0.8" />
+    <param name="frame_id" value="base_footprint_2d" />
+  </node>
+  </group>
+</launch>
