@@ -529,7 +529,16 @@ void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStamped::ConstPt
     ROS_WARN("Could NOT transform : %s", ex.what());
     return;
   }
-  double rad = tf::getYaw(mapPose.pose.orientation);
+  tf2::Transform tmp;
+  tf2::fromMsg(mapPose.pose, tmp);
+  double roll, pitch, yaw;
+  tf2::getEulerYPR(tmp.getRotation(), yaw, pitch, roll);
+  if (10.0<fabs(roll*180.0/M_PI) || 10.0<fabs(pitch*180.0/M_PI)){
+    ROS_WARN("Vicon has noise.");
+    return;
+  }
+  double rad = yaw;
+  // double rad = tf::getYaw(mapPose.pose.orientation);
   GenInitialParticles(mapPose.pose.position.x, mapPose.pose.position.y, rad,
                       arg->pose.covariance.at(0), arg->pose.covariance.at(35));
 }
