@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
 
   ros::Subscriber pf_predict_sub =
-      nh.subscribe<tms_msg_ss::vicon_data>("/vicon_stream/output", 10, ViconCallback);
+      nh.subscribe<tms_msg_ss::vicon_data>("vicon_stream/output", 10, ViconCallback);
   pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("vicon_pose", 5);
 
   ros::spin();

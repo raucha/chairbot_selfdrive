@@ -413,7 +413,7 @@ static void initialpose_callback(const nav_msgs::Odometry::ConstPtr &input) {
   // prevNavDataTime = input->header.stamp;
   // if(!got_init_pose){
   // 初期姿勢設定
-  ROS_INFO("initialpose_callback");
+  ROS_DEBUG("initialpose_callback");
   ndt_pose.pose = input->pose.pose;
   ndt_pose.header = input->header;
   got_init_pose = true;
@@ -461,6 +461,21 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
     return;
   }
   ROS_INFO("scan_callback");
+
+  static ros::Time prevPubTransTime(0);
+  static ros::Time lastCallbackTime(0);
+  ros::Time now = ros::Time::now();
+  ros::Duration period = now - lastCallbackTime;
+  if(ros::Time(0) == lastCallbackTime){
+    period = ros::Duration(1.0);   //1sec
+  }
+  lastCallbackTime = now;
+
+  if (ros::Duration(0.25) > ndt_pose.header.stamp-prevPubTransTime){
+    ROS_INFO("時間間隔短すぎ．前回のtransが反映されてない可能性あり．return実行");
+    return;
+  }
+
 
   PointCloud_xyz scan;  //! センサの入力データ
   pcl::fromROSMsg(*input, scan);
@@ -565,6 +580,18 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
     p.a = roll;
     p.b = pitch;
     p.g = yaw;
+    //p.x += 2.0 * 0.5 * (uniform_random() - 0.5);
+    //p.y += 2.0 * 0.5 * (uniform_random() - 0.5);
+    //p.z += 2.0 * 0.2 * (uniform_random() - 0.5);
+    //p.a += 2.0 * 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+    //p.b += 2.0 * 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+    //p.g += 2.0 * 5.0 * M_PI / 180.0 * (uniform_random() - 0.5);
+    // p.x += period.toSec() * 4.0 * 0.5 * (uniform_random() - 0.5);
+    // p.y += period.toSec() * 4.0 * 0.5 * (uniform_random() - 0.5);
+    // p.z += period.toSec() * 4.0 * 0.2 * (uniform_random() - 0.5);
+    // p.a += period.toSec() * 4.0 * 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+    // p.b += period.toSec() * 4.0 * 0.5 * M_PI / 180.0 * (uniform_random() - 0.5);
+    // p.g += period.toSec() * 4.0 * 5.0 * M_PI / 180.0 * (uniform_random() - 0.5);
     particle.push_back(p);
   }
 
@@ -642,6 +669,7 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
     // 重み最大のパーティクルは確実に残す
     new_particle.push_back(max_p);
 
+    std::cout << "total_weight: " << total_weight << std::endl;
     for (int i = 1; i < pnum; i++) {
       // 0~重みの和（total_weight）までで、乱数である値を決める
       double r = (double)rand() / RAND_MAX * total_weight;
@@ -747,6 +775,7 @@ static void scan_callback(const sensor_msgs::PointCloud2::ConstPtr &input) {
   std_msgs::Float64 fitnessScore;
   // fitnessScore.data = ndt.getFitnessScore();
   score_pub.publish(fitnessScore);
+  prevPubTransTime = ros::Time::now();
 
   std::cout << "-----------------------------------------------------------------" << std::endl;
   std::cout << "Sequence: " << input->header.seq << std::endl;

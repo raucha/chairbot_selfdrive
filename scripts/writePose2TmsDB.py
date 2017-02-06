@@ -30,7 +30,7 @@ def callback(arg):
     msg.tmsdb[0].id = 2010
     msg.tmsdb[0].name = "wheelchair_blue"
     msg.tmsdb[0].place = 5001
-    msg.tmsdb[0].sensor = 0
+    msg.tmsdb[0].sensor = 2010
     msg.tmsdb[0].state = 1      # 存在する
     msg.tmsdb[0].x = arg.position.x
     msg.tmsdb[0].y = arg.position.y
