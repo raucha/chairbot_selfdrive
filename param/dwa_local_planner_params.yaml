@@ -1,3 +1,24 @@
+TrajectoryPlannerROS:
+  max_vel_x: 0.3 # choose slightly less than the base's capability
+  min_vel_x: 0.05  # this is the min trans velocity when there is negligible rotational velocity
+  escape_vel: 0.2
+  # trans_stopped_vel: 0.01  # 停止状態とみなす速度
+  yaw_goal_tolerance: 0.6
+  xy_goal_tolerance: 0.5
+  acc_lim_x: 1.0
+  meter_scoring: false
+  sim_time: 2.0
+  # pdist_scale: 12.0
+  # gdist_scale: 16.0
+  # occdist_scale: 0.2
+  pdist_scale: 1.2
+  gdist_scale: 0.8
+  occdist_scale: 0.01
+  heading_scoring: false
+  heading_lookahead: 1.5
+  dwa: true
+  # occdist_scale: 0.05
+
 DWAPlannerROS:
 
 # Robot Configuration Parameters - Kobuki
@@ -10,8 +31,8 @@ DWAPlannerROS:
   # max_trans_vel: 0.25 # choose slightly less than the base's capability
   # min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
   # trans_stopped_vel: 0.1  # 停止状態とみなす速度
-  max_trans_vel: 0.5 # choose slightly less than the base's capability
-  min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
+  max_trans_vel: 0.6 # choose slightly less than the base's capability
+  min_trans_vel: 0.05  # this is the min trans velocity when there is negligible rotational velocity
   trans_stopped_vel: 0.01  # 停止状態とみなす速度
 
   # Warning!
@@ -22,12 +43,12 @@ DWAPlannerROS:
   # min_rot_vel: 0.1  # this is the min angular velocity when there is negligible translational velocity
   # rot_stopped_vel: 0.4  # 停止状態とみなす角速度
   max_rot_vel: 2.5  # choose slightly less than the base's capability
-  min_rot_vel: 0.05  # this is the min angular velocity when there is negligible translational velocity
+  min_rot_vel: 0.1  # this is the min angular velocity when there is negligible translational velocity
   rot_stopped_vel: 0.001  # 停止状態とみなす角速度
 
   acc_lim_x: 1.0    # 加速度
   # acc_lim_x: 0.25    # 加速度
-  acc_lim_theta: 2.0
+  acc_lim_theta: 6.0
   acc_lim_y: 0.0     # 2輪だから要らない
 
 # Goal Tolerance Parameters
@@ -42,14 +63,14 @@ DWAPlannerROS:
   vtheta_samples: 20  # 20
 
 # Trajectory Scoring Parameters
-  path_distance_bias: 50.0      # 32.0   - 大きいほど経路を忠実に追従
+  path_distance_bias: 42.0      # 32.0   - 大きいほど経路を忠実に追従
   # path_distance_bias: 40.0      # 32.0   - 大きいほど経路を忠実に追従
   # path_distance_bias: 32.0      # 32.0   - 大きいほど経路を忠実に追従
   goal_distance_bias: 24.0      # 24.0   - 大きいほどローカルゴールへ近づこうとする
-  occdist_scale: 4.0            # 0.01   - 大きいほど障害物を避けようとする
+  occdist_scale: 0.01            # 0.01   - 大きいほど障害物を避けようとする
   # occdist_scale: 3.0            # 0.01   - 大きいほど障害物を避けようとする
   # occdist_scale: 0.5            # 0.01   - 大きいほど障害物を避けようとする
-  forward_point_distance: 0.6 # 0.325  - how far along to place an additional scoring point
+  forward_point_distance: 0.8 # 0.325  - how far along to place an additional scoring point
   stop_time_buffer: 0.2         # 0.2    - amount of time a robot must stop in before colliding for a valid traj.
   scaling_speed: 0.25           # 0.25   - absolute velocity at which to start scaling the robot's footprint
   max_scaling_factor: 0.2       # 0.2    - how much to scale the robot's footprint when at speed.
