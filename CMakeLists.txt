@@ -151,11 +151,11 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(
-  pf_localization_node src/pf_localization_node.cpp src/nonlinearMeasurementPdf.cpp src/nonlinearSystemPdf.cpp src/customparticlefilter.cpp
-)
-add_dependencies(pf_localization_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(pf_localization_node ${catkin_LIBRARIES} ${BFL_LIBRARIES})
+# add_executable(
+#   pf_localization_node src/pf_localization_node.cpp src/nonlinearMeasurementPdf.cpp src/nonlinearSystemPdf.cpp src/customparticlefilter.cpp
+# )
+# add_dependencies(pf_localization_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(pf_localization_node ${catkin_LIBRARIES} ${BFL_LIBRARIES})
 
 add_executable(lrf_reflectance src/lrf_reflectance.cpp)
 target_link_libraries(lrf_reflectance ${catkin_LIBRARIES} ${PCL_LIBRARIES})
